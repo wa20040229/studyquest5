@@ -3,33 +3,88 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Study Quest 7</title>
+<title>Study Quest 7.1</title>
+
 <style>
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#0f172a,#1e1b4b);color:white;padding:14px}
-h1{text-align:center;font-size:30px;margin:10px 0}.subtitle{text-align:center;color:#c7d2fe;margin-bottom:14px}
-.box,.card{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:16px;margin-bottom:14px;border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;position:sticky;top:0;z-index:10;background:#0f172a;padding:8px 0}
-.tabBtn{font-size:13px;padding:10px 4px;border-radius:14px;background:rgba(255,255,255,.16)}
+*{box-sizing:border-box}
+html,body{width:100%;overflow-x:hidden}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:linear-gradient(180deg,#0f172a,#1e1b4b);
+  color:white;
+  padding:12px;
+  padding-bottom:90px;
+}
+h1{text-align:center;font-size:28px;margin:10px 0}
+.subtitle{text-align:center;color:#c7d2fe;margin-bottom:14px}
+.box,.card{
+  width:100%;
+  max-width:100%;
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.18);
+  padding:16px;
+  margin-bottom:14px;
+  border-radius:20px;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+.tabs{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+  margin-bottom:14px;
+  position:sticky;
+  top:0;
+  z-index:10;
+  background:#0f172a;
+  padding:8px 0;
+}
+.tabBtn{font-size:13px;padding:10px 2px;border-radius:14px;background:rgba(255,255,255,.16)}
 .tabBtn.active{background:linear-gradient(135deg,#6366f1,#06b6d4)}
-button,input,select{border:none;border-radius:14px;padding:13px;font-size:16px;font-weight:800}
+button,input,select{
+  width:100%;
+  max-width:100%;
+  border:none;
+  border-radius:14px;
+  padding:13px;
+  font-size:16px;
+  font-weight:800;
+}
 button{color:white;background:linear-gradient(135deg,#6366f1,#06b6d4)}
-input,select{width:100%;box-sizing:border-box;margin:7px 0}
-.wide{width:100%;margin-top:9px}.danger{background:linear-gradient(135deg,#ef4444,#f97316)}.subbtn{background:rgba(255,255,255,.18)}
-.hidden{display:none}.name{font-size:22px;font-weight:900}.time{font-size:40px;font-weight:900;margin:10px 0;color:#a5f3fc}
-.btns{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.btns3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.rankLine,.taskLine,.histLine{font-size:17px;font-weight:700;padding:7px 0}.small{color:#c7d2fe;font-size:13px;line-height:1.5}
+input,select{margin:7px 0;color:#111;background:white}
+label{
+  display:block;
+  margin-top:12px;
+  margin-bottom:3px;
+  font-size:15px;
+  font-weight:900;
+  color:#dbeafe;
+}
+.wide{width:100%;margin-top:9px}
+.danger{background:linear-gradient(135deg,#ef4444,#f97316)}
+.subbtn{background:rgba(255,255,255,.18)}
+.hidden{display:none}
+.name{font-size:22px;font-weight:900}
+.time{font-size:40px;font-weight:900;margin:10px 0;color:#a5f3fc}
+.btns{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.btns button{font-size:14px;padding:12px 4px}
+.btns3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.rankLine,.taskLine,.histLine{font-size:17px;font-weight:700;padding:7px 0}
+.small{color:#c7d2fe;font-size:13px;line-height:1.5}
 #error,#appError{color:#fecaca;font-weight:800;margin-top:12px;white-space:pre-wrap}
 .progressOuter{height:14px;background:rgba(255,255,255,.2);border-radius:999px;overflow:hidden;margin:10px 0}
 .progressInner{height:100%;background:linear-gradient(90deg,#22d3ee,#a78bfa)}
 .bigGoal{font-size:34px;font-weight:900;color:#fde68a;margin:8px 0}
 .graph{display:flex;align-items:end;gap:6px;height:130px;margin-top:12px}
 .bar{flex:1;background:linear-gradient(180deg,#22d3ee,#6366f1);border-radius:8px 8px 0 0;min-height:4px}
-.graphLabel{display:flex;gap:6px}.graphLabel span{flex:1;text-align:center;font-size:11px;color:#c7d2fe}
+.graphLabel{display:flex;gap:6px}
+.graphLabel span{flex:1;text-align:center;font-size:11px;color:#c7d2fe}
 </style>
 </head>
+
 <body>
 
-<h1>Study Quest 7</h1>
+<h1>Study Quest 7.1</h1>
 <div class="subtitle">今日やること・教材管理・勉強時間・ランキング</div>
 
 <div id="login" class="box">
@@ -63,7 +118,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, setDoc, collection, onSnapshot, increment, addDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const firebaseConfig={apiKey:"AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",authDomain:"studycount-wata.firebaseapp.com",projectId:"studycount-wata",storageBucket:"studycount-wata.firebasestorage.app",messagingSenderId:"497085827292",appId:"1:497085827292:web:f4085fd6190eb853150c19"};
+const firebaseConfig={
+  apiKey:"AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",
+  authDomain:"studycount-wata.firebaseapp.com",
+  projectId:"studycount-wata",
+  storageBucket:"studycount-wata.firebasestorage.app",
+  messagingSenderId:"497085827292",
+  appId:"1:497085827292:web:f4085fd6190eb853150c19"
+};
+
 const firebaseApp=initializeApp(firebaseConfig);
 const db=getFirestore(firebaseApp);
 const auth=getAuth(firebaseApp);
@@ -84,10 +147,10 @@ function todayKey(){
 function nowText(){
   return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date());
 }
-function toDate(s){return new Date(s+"T00:00:00");}
-function diffDays(a,b){return Math.floor((toDate(b)-toDate(a))/86400000)+1;}
-function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
-function showAppError(e){document.getElementById("appError").textContent="Firebaseエラー: "+(e.message||e);}
+function toDate(s){return new Date(s+"T00:00:00")}
+function diffDays(a,b){return Math.floor((toDate(b)-toDate(a))/86400000)+1}
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+function showAppError(e){document.getElementById("appError").textContent="Firebaseエラー: "+(e.message||e)}
 function lastDays(n){
   const arr=[];
   for(let i=n-1;i>=0;i--){
@@ -102,18 +165,26 @@ window.login=async function(){
   try{
     document.getElementById("error").textContent="";
     await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("password").value);
-  }catch(e){document.getElementById("error").textContent=e.message;}
+  }catch(e){document.getElementById("error").textContent=e.message}
 };
 window.logout=async function(){
-  if(unsubDaily)unsubDaily();if(unsubHistory)unsubHistory();if(unsubMaterials)unsubMaterials();
+  if(unsubDaily)unsubDaily();
+  if(unsubHistory)unsubHistory();
+  if(unsubMaterials)unsubMaterials();
   await signOut(auth);
 };
 await setPersistence(auth,browserLocalPersistence);
 
 onAuthStateChanged(auth,user=>{
-  if(!user){showLogin();return;}
-  if(!allowedEmails.includes(user.email)){showLogin("このアカウントは利用できません："+user.email);signOut(auth);return;}
-  currentUser=user;showMain(user);startRealtime();
+  if(!user){showLogin();return}
+  if(!allowedEmails.includes(user.email)){
+    showLogin("このアカウントは利用できません："+user.email);
+    signOut(auth);
+    return;
+  }
+  currentUser=user;
+  showMain(user);
+  startRealtime();
 });
 
 function showLogin(msg=""){
@@ -142,19 +213,19 @@ window.add=async function(name,min){
     const date=todayKey();
     await setDoc(doc(db,"dailyStudy",`${date}_${name}`),{date,name,time:increment(min),updatedAtMs:Date.now()},{merge:true});
     await addDoc(collection(db,"studyHistory"),{date,datetime:nowText(),name,minutes:min,userEmail:currentUser.email,createdAtMs:Date.now()});
-  }catch(e){showAppError(e);}
+  }catch(e){showAppError(e)}
 };
 
 window.undoLast=async function(){
   try{
-    if(!historyRecords.length){alert("取り消す履歴がありません");return;}
+    if(!historyRecords.length){alert("取り消す履歴がありません");return}
     if(!confirm("最後の操作を取り消しますか？"))return;
     const h=historyRecords[0];
     const cur=dailyRecords.find(r=>r.date===h.date&&r.name===h.name);
     const newTime=Math.max(0,Number((cur&&cur.time)||0)-Number(h.minutes||0));
     await setDoc(doc(db,"dailyStudy",`${h.date}_${h.name}`),{date:h.date,name:h.name,time:newTime,updatedAtMs:Date.now()},{merge:true});
     await deleteDoc(doc(db,"studyHistory",h.id));
-  }catch(e){showAppError(e);}
+  }catch(e){showAppError(e)}
 };
 
 window.addMaterial=async function(){
@@ -166,52 +237,78 @@ window.addMaterial=async function(){
     const startDate=document.getElementById("matStart").value;
     const endDate=document.getElementById("matEnd").value;
     const testDate=document.getElementById("matExam").value;
-    if(!name||!total||!startDate||!endDate||!testDate){alert("教材名・総量・開始日・最終日・試験日を入れてください");return;}
-    if(toDate(endDate)<toDate(startDate)){alert("勉強最終日は開始日以降にしてください");return;}
-    await addDoc(collection(db,"examMaterials"),{person,subject,name,total,done:0,startDate,endDate,testDate,createdAtMs:Date.now(),updatedAtMs:Date.now()});
+    if(!name||!total||!startDate||!endDate||!testDate){
+      alert("教材名・総量・開始日・最終日・試験日を入れてください");
+      return;
+    }
+    if(toDate(endDate)<toDate(startDate)){
+      alert("勉強最終日は開始日以降にしてください");
+      return;
+    }
+    await addDoc(collection(db,"examMaterials"),{
+      person,subject,name,total,done:0,startDate,endDate,testDate,createdAtMs:Date.now(),updatedAtMs:Date.now()
+    });
     ["matName","matTotal","matStart","matEnd","matExam"].forEach(id=>document.getElementById(id).value="");
-  }catch(e){showAppError(e);}
+  }catch(e){showAppError(e)}
 };
+
 window.addProgress=async function(id,n){
   try{
-    const m=materials.find(x=>x.id===id);if(!m)return;
+    const m=materials.find(x=>x.id===id);
+    if(!m)return;
     const done=Math.max(0,Math.min(Number(m.total||0),Number(m.done||0)+n));
     await setDoc(doc(db,"examMaterials",id),{done,updatedAtMs:Date.now()},{merge:true});
-  }catch(e){showAppError(e);}
+  }catch(e){showAppError(e)}
 };
+
 window.deleteMaterial=async function(id){
   if(!confirm("この教材を削除しますか？"))return;
   await deleteDoc(doc(db,"examMaterials",id));
 };
 
 function startRealtime(){
-  if(unsubDaily)unsubDaily();if(unsubHistory)unsubHistory();if(unsubMaterials)unsubMaterials();
+  if(unsubDaily)unsubDaily();
+  if(unsubHistory)unsubHistory();
+  if(unsubMaterials)unsubMaterials();
 
   unsubDaily=onSnapshot(collection(db,"dailyStudy"),snap=>{
-    todayData={みく:0,けいと:0,なおこ:0};totalData={みく:0,けいと:0,なおこ:0};dailyRecords=[];
+    todayData={みく:0,けいと:0,なおこ:0};
+    totalData={みく:0,けいと:0,なおこ:0};
+    dailyRecords=[];
     const today=todayKey();
     snap.forEach(ds=>{
-      const d=ds.data();if(!people.includes(d.name))return;
+      const d=ds.data();
+      if(!people.includes(d.name))return;
       const time=Number(d.time||0);
       dailyRecords.push({date:d.date,name:d.name,time});
-      totalData[d.name]+=time;if(d.date===today)todayData[d.name]+=time;
+      totalData[d.name]+=time;
+      if(d.date===today)todayData[d.name]+=time;
     });
-    dailyRecords.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));render();
+    dailyRecords.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
+    render();
   },showAppError);
 
   unsubHistory=onSnapshot(collection(db,"studyHistory"),snap=>{
-    historyRecords=[];snap.forEach(ds=>historyRecords.push({id:ds.id,...ds.data()}));
-    historyRecords.sort((a,b)=>Number(b.createdAtMs||0)-Number(a.createdAtMs||0));historyRecords=historyRecords.slice(0,30);render();
+    historyRecords=[];
+    snap.forEach(ds=>historyRecords.push({id:ds.id,...ds.data()}));
+    historyRecords.sort((a,b)=>Number(b.createdAtMs||0)-Number(a.createdAtMs||0));
+    historyRecords=historyRecords.slice(0,30);
+    render();
   },showAppError);
 
   unsubMaterials=onSnapshot(collection(db,"examMaterials"),snap=>{
-    materials=[];snap.forEach(ds=>materials.push({id:ds.id,...ds.data()}));
-    materials.sort((a,b)=>(a.person||"").localeCompare(b.person||"")||(a.endDate||"").localeCompare(b.endDate||""));render();
+    materials=[];
+    snap.forEach(ds=>materials.push({id:ds.id,...ds.data()}));
+    materials.sort((a,b)=>(a.person||"").localeCompare(b.person||"")||(a.endDate||"").localeCompare(b.endDate||""));
+    render();
   },showAppError);
 }
 
 function calcTask(m){
-  const today=todayKey(), total=Number(m.total||0), done=Number(m.done||0), remain=Math.max(0,total-done);
+  const today=todayKey();
+  const total=Number(m.total||0);
+  const done=Number(m.done||0);
+  const remain=Math.max(0,total-done);
   if(remain<=0)return {status:"完了",quota:0,remain,days:0,pct:100};
   const pct=total?Math.round(done/total*100):0;
   if(today<m.startDate)return {status:"開始前",quota:0,remain,days:diffDays(m.startDate,m.endDate),pct};
@@ -220,29 +317,39 @@ function calcTask(m){
   return {status:"実行中",quota:Math.ceil(remain/days),remain,days,pct};
 }
 
-function render(){renderToday();renderMaterials();renderTime();renderRank();}
+function render(){
+  renderToday();
+  renderMaterials();
+  renderTime();
+  renderRank();
+}
 
 function renderToday(){
   const v=document.getElementById("view-today");
-  let html=`<div class="box"><h2>🔥 今日やること</h2><select id="todayPerson" onchange="window.renderTodayOnly()">`;
+  let html=`<div class="box"><h2>🔥 今日やること</h2><label>人を選択</label><select id="todayPerson" onchange="window.renderTodayOnly()">`;
   people.forEach(p=>html+=`<option value="${p}">${p}</option>`);
   html+=`</select><div id="todayTasks"></div></div>`;
   v.innerHTML=html;
   window.renderTodayOnly();
 }
+
 window.renderTodayOnly=function(){
-  const sel=document.getElementById("todayPerson");if(!sel)return;
+  const sel=document.getElementById("todayPerson");
+  if(!sel)return;
   const person=sel.value;
   const list=materials.filter(m=>m.person===person).map(m=>({m,t:calcTask(m)})).filter(x=>x.t.status==="実行中"||x.t.status==="期限超過");
   const target=document.getElementById("todayTasks");
-  if(!list.length){target.innerHTML=`<div class="small">今日やる教材はありません</div>`;return;}
+  if(!list.length){
+    target.innerHTML=`<div class="small">今日やる教材はありません</div>`;
+    return;
+  }
   const totalQuota=list.reduce((s,x)=>s+x.t.quota,0);
   target.innerHTML=`<div class="bigGoal">今日 合計 ${totalQuota}</div>`+
     list.map(x=>`
       <div class="card">
         <div class="name">${esc(x.m.subject)}：${esc(x.m.name)}</div>
         <div class="bigGoal">${x.t.quota}</div>
-        <div class="small">残り ${x.t.remain} / 期限 ${esc(x.m.endDate)} / ${x.t.status}</div>
+        <div class="small">残り ${x.t.remain} / 勉強最終日 ${esc(x.m.endDate)} / ${x.t.status}</div>
         <div class="progressOuter"><div class="progressInner" style="width:${x.t.pct}%"></div></div>
         <div class="btns3">
           <button onclick="window.addProgress('${x.m.id}',1)">+1</button>
@@ -255,16 +362,32 @@ window.renderTodayOnly=function(){
 function renderMaterials(){
   const v=document.getElementById("view-materials");
   let html=`<div class="box"><h2>📚 教材管理</h2>
+    <label>人を選択</label>
     <select id="matPerson">${people.map(p=>`<option value="${p}">${p}</option>`).join("")}</select>
+
+    <label>教科を選択</label>
     <select id="matSubject">${subjects.map(s=>`<option value="${s}">${s}</option>`).join("")}</select>
-    <input id="matName" placeholder="教材名">
-    <input id="matTotal" type="number" placeholder="総量（ページ・問）">
+
+    <label>教材名</label>
+    <input id="matName" placeholder="例：漢字ドリル">
+
+    <label>総量（ページ・問）</label>
+    <input id="matTotal" type="number" placeholder="例：80">
+
+    <label>勉強開始日</label>
     <input id="matStart" type="date">
+
+    <label>勉強最終日</label>
     <input id="matEnd" type="date">
+
+    <label>試験日</label>
     <input id="matExam" type="date">
+
     <button class="wide" onclick="window.addMaterial()">教材を追加</button>
   </div><div class="box"><h2>登録済み教材</h2>`;
+
   if(!materials.length)html+=`<div class="small">まだ教材がありません</div>`;
+
   materials.forEach(m=>{
     const t=calcTask(m);
     html+=`<div class="card">
@@ -282,6 +405,7 @@ function renderMaterials(){
       </div>
     </div>`;
   });
+
   v.innerHTML=html+`</div>`;
 }
 
@@ -290,14 +414,23 @@ function renderTime(){
   let html=`<div class="box"><h2>⏱ 勉強時間</h2>`;
   people.forEach(name=>{
     html+=`<div class="card"><div class="name">${name}</div><div class="time">${todayData[name]}分</div><div class="btns">
-      <button onclick="window.add('${name}',5)">+5</button><button onclick="window.add('${name}',10)">+10</button><button onclick="window.add('${name}',15)">+15</button><button onclick="window.add('${name}',30)">+30</button><button onclick="window.add('${name}',60)">+60</button>
+      <button onclick="window.add('${name}',5)">+5</button>
+      <button onclick="window.add('${name}',10)">+10</button>
+      <button onclick="window.add('${name}',15)">+15</button>
+      <button onclick="window.add('${name}',30)">+30</button>
+      <button onclick="window.add('${name}',60)">+60</button>
     </div></div>`;
   });
-  html+=`</div><div class="box"><button class="wide danger" onclick="window.undoLast()">最後の操作を取り消す</button>
-  <button class="wide subbtn" onclick="window.exportDailyCSV()">日別CSV</button>
-  <button class="wide subbtn" onclick="window.exportHistoryCSV()">履歴CSV</button>
-  <button class="wide subbtn" onclick="window.logout()">ログアウト</button></div>
-  <div class="box"><h2>📝 最近の履歴</h2>${historyRecords.length?historyRecords.map(h=>`<div class="histLine">${h.datetime||h.date}　${h.name}　+${h.minutes}分</div>`).join(""):`<div class="small">まだ履歴がありません</div>`}</div>`;
+
+  html+=`</div><div class="box">
+    <button class="wide danger" onclick="window.undoLast()">最後の操作を取り消す</button>
+    <button class="wide subbtn" onclick="window.exportDailyCSV()">日別CSV</button>
+    <button class="wide subbtn" onclick="window.exportHistoryCSV()">履歴CSV</button>
+    <button class="wide subbtn" onclick="window.logout()">ログアウト</button>
+  </div>
+  <div class="box"><h2>📝 最近の履歴</h2>${
+    historyRecords.length?historyRecords.map(h=>`<div class="histLine">${h.datetime||h.date}　${h.name}　+${h.minutes}分</div>`).join(""):`<div class="small">まだ履歴がありません</div>`
+  }</div>`;
   v.innerHTML=html;
 }
 
@@ -305,8 +438,13 @@ function renderRank(){
   const v=document.getElementById("view-rank");
   const todayRank=[...people].sort((a,b)=>todayData[b]-todayData[a]);
   const totalRank=[...people].sort((a,b)=>totalData[b]-totalData[a]);
-  v.innerHTML=`<div class="box"><h2>🏆 今日ランキング</h2>${todayRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${todayData[n]}分</div>`).join("")}</div>
-  <div class="box"><h2>🏅 累計ランキング</h2>${totalRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${totalData[n]}分</div>`).join("")}</div>
+
+  v.innerHTML=`<div class="box"><h2>🏆 今日ランキング</h2>${
+    todayRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${todayData[n]}分</div>`).join("")
+  }</div>
+  <div class="box"><h2>🏅 累計ランキング</h2>${
+    totalRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${totalData[n]}分</div>`).join("")
+  }</div>
   ${graphHtml()}`;
 }
 
@@ -314,18 +452,38 @@ function graphHtml(){
   const days=lastDays(7);
   const vals=days.map(date=>({date,value:dailyRecords.filter(r=>r.date===date).reduce((s,r)=>s+r.time,0)}));
   const max=Math.max(...vals.map(x=>x.value),1);
-  return `<div class="box"><h2>📈 勉強時間グラフ</h2><div class="graph">${vals.map(x=>`<div class="bar" style="height:${Math.max(4,x.value/max*120)}px"></div>`).join("")}</div><div class="graphLabel">${vals.map(x=>`<span>${x.date.slice(5)}</span>`).join("")}</div><div class="small">家族合計の7日間推移です</div></div>`;
+
+  return `<div class="box"><h2>📈 勉強時間グラフ</h2>
+    <div class="graph">${vals.map(x=>`<div class="bar" style="height:${Math.max(4,x.value/max*120)}px"></div>`).join("")}</div>
+    <div class="graphLabel">${vals.map(x=>`<span>${x.date.slice(5)}</span>`).join("")}</div>
+    <div class="small">家族合計の7日間推移です</div>
+  </div>`;
 }
 
 window.exportDailyCSV=function(){
-  let csv="日付,名前,勉強時間\n";dailyRecords.forEach(r=>csv+=`${r.date},${r.name},${r.time}\n`);downloadCSV(csv,`studyquest_daily_${todayKey()}.csv`);
+  let csv="日付,名前,勉強時間\n";
+  dailyRecords.forEach(r=>csv+=`${r.date},${r.name},${r.time}\n`);
+  downloadCSV(csv,`studyquest_daily_${todayKey()}.csv`);
 };
+
 window.exportHistoryCSV=async function(){
-  const snap=await getDocs(collection(db,"studyHistory"));let rows=[];snap.forEach(d=>rows.push(d.data()));rows.sort((a,b)=>Number(a.createdAtMs||0)-Number(b.createdAtMs||0));
-  let csv="日時,日付,名前,追加時間,入力者\n";rows.forEach(r=>csv+=`${r.datetime||""},${r.date||""},${r.name||""},${r.minutes||0},${r.userEmail||""}\n`);downloadCSV(csv,`studyquest_history_${todayKey()}.csv`);
+  const snap=await getDocs(collection(db,"studyHistory"));
+  let rows=[];
+  snap.forEach(d=>rows.push(d.data()));
+  rows.sort((a,b)=>Number(a.createdAtMs||0)-Number(b.createdAtMs||0));
+  let csv="日時,日付,名前,追加時間,入力者\n";
+  rows.forEach(r=>csv+=`${r.datetime||""},${r.date||""},${r.name||""},${r.minutes||0},${r.userEmail||""}\n`);
+  downloadCSV(csv,`studyquest_history_${todayKey()}.csv`);
 };
+
 function downloadCSV(csv,filename){
-  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 </script>
 </body>
