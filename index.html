@@ -13,88 +13,29 @@ body{
   color:white;
   padding:18px;
 }
-
-h1{
-  margin:8px 0 10px;
-  text-align:center;
-  font-size:32px;
-}
-
-.subtitle{
-  text-align:center;
-  color:#c7d2fe;
-  margin-bottom:18px;
-}
-
+h1{text-align:center;font-size:32px;}
+.subtitle{text-align:center;color:#c7d2fe;margin-bottom:18px;}
 .card,.loginBox,#ranking{
   background:rgba(255,255,255,0.12);
-  backdrop-filter:blur(12px);
   border:1px solid rgba(255,255,255,0.18);
   padding:18px;
   margin-bottom:16px;
   border-radius:22px;
   box-shadow:0 8px 24px rgba(0,0,0,.25);
 }
-
-.name{
-  font-size:24px;
-  font-weight:800;
-}
-
-.time{
-  font-size:42px;
-  font-weight:900;
-  margin:12px 0;
-  color:#a5f3fc;
-}
-
-.btns{
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:8px;
-}
-
+.name{font-size:24px;font-weight:800;}
+.time{font-size:42px;font-weight:900;margin:12px 0;color:#a5f3fc;}
+.btns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
 button{
-  border:none;
-  border-radius:16px;
-  padding:14px 0;
-  font-size:16px;
-  font-weight:800;
-  color:white;
+  border:none;border-radius:16px;padding:14px 0;
+  font-size:16px;font-weight:800;color:white;
   background:linear-gradient(135deg,#6366f1,#06b6d4);
 }
-
-button:active{
-  transform:scale(.96);
-}
-
-.loginBtn{
-  width:100%;
-  margin-top:12px;
-  font-size:18px;
-}
-
-.logoutBtn{
-  background:rgba(255,255,255,.18);
-  margin-top:10px;
-  width:100%;
-}
-
-.rankLine{
-  font-size:20px;
-  font-weight:700;
-  padding:8px 0;
-}
-
-.hidden{
-  display:none;
-}
-
-#error{
-  color:#fecaca;
-  font-weight:800;
-  margin-top:12px;
-}
+.loginBtn,.logoutBtn{width:100%;margin-top:12px;}
+.logoutBtn{background:rgba(255,255,255,.18);}
+.rankLine{font-size:20px;font-weight:700;padding:8px 0;}
+.hidden{display:none;}
+#error{color:#fecaca;font-weight:800;margin-top:12px;}
 </style>
 </head>
 
@@ -118,26 +59,9 @@ button:active{
 </div>
 
 <script type="module">
-
-import { initializeApp } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  collection, 
-  onSnapshot 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",
@@ -164,7 +88,11 @@ let data = {みく:0, けいと:0, なおこ:0};
 let unsubscribe = null;
 
 window.login = async function(){
-  await signInWithRedirect(auth, provider);
+  try{
+    await signInWithPopup(auth, provider);
+  }catch(e){
+    document.getElementById("error").textContent = e.message;
+  }
 };
 
 window.logout = async function(){
@@ -172,12 +100,7 @@ window.logout = async function(){
   await signOut(auth);
 };
 
-getRedirectResult(auth).catch(err=>{
-  document.getElementById("error").textContent = err.message;
-});
-
 onAuthStateChanged(auth, user=>{
-
   if(!user){
     showLogin();
     return;
@@ -206,7 +129,6 @@ function showMain(user){
 }
 
 function render(){
-
   const appDiv = document.getElementById("app");
   appDiv.innerHTML = "";
 
@@ -230,20 +152,15 @@ function render(){
 
   document.getElementById("ranking").innerHTML =
     "<h2>🏆 ランキング</h2>" +
-    rank.map((n,i)=>
-      `<div class="rankLine">${i+1}位 ${n}　${data[n]}分</div>`
-    ).join("");
+    rank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${data[n]}分</div>`).join("");
 }
 
 async function add(name,min){
   data[name] += min;
-  await setDoc(doc(db,"study",name),{
-    time:data[name]
-  });
+  await setDoc(doc(db,"study",name),{ time:data[name] });
 }
 
 function startRealtime(){
-
   if(unsubscribe) unsubscribe();
 
   unsubscribe = onSnapshot(collection(db,"study"), snap=>{
@@ -256,7 +173,6 @@ function startRealtime(){
 }
 
 window.add = add;
-
 </script>
 
 </body>
