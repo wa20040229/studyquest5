@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Quest 5</title>
+
+<style>
+body{
+  font-family:sans-serif;
+  background:#f5f5f5;
+  padding:20px;
+}
+
+h1{
+  text-align:center;
+}
+
+.card{
+  background:white;
+  padding:15px;
+  margin-bottom:12px;
+  border-radius:12px;
+}
+
+.name{
+  font-size:22px;
+  font-weight:bold;
+}
+
+.time{
+  font-size:32px;
+  margin:10px 0;
+}
+
+button{
+  font-size:18px;
+  margin-right:8px;
+  padding:8px 12px;
+}
+
+#ranking{
+  margin-top:20px;
+  background:white;
+  padding:15px;
+  border-radius:12px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Study Quest 5</h1>
+
+<div id="app"></div>
+
+<div id="ranking"></div>
+
+<script type="module">
+
+import { initializeApp } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  collection, 
+  onSnapshot 
+} 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",
+  authDomain: "studycount-wata.firebaseapp.com",
+  projectId: "studycount-wata",
+  storageBucket: "studycount-wata.firebasestorage.app",
+  messagingSenderId: "497085827292",
+  appId: "1:497085827292:web:f4085fd6190eb853150c19"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+console.log("Firebase OK");
+
+const people = ["みく","けいと","なおこ"];
+let data = {みく:0, けいと:0, なおこ:0};
+
+function render(){
+
+  const appDiv = document.getElementById("app");
+  appDiv.innerHTML = "";
+
+  people.forEach(name=>{
+    appDiv.innerHTML += `
+      <div class="card">
+        <div class="name">${name}</div>
+        <div class="time">${data[name]} 分</div>
+        <button onclick="window.add('${name}',10)">+10</button>
+        <button onclick="window.add('${name}',30)">+30</button>
+        <button onclick="window.add('${name}',60)">+60</button>
+      </div>
+    `;
+  });
+
+  const rank = [...people].sort((a,b)=>data[b]-data[a]);
+
+  document.getElementById("ranking").innerHTML =
+    "<h2>ランキング</h2>" +
+    rank.map((n,i)=>
+      `${i+1}位 ${n} (${data[n]}分)`
+    ).join("<br>");
+}
+
+async function add(name,min){
+
+  data[name] += min;
+
+  await setDoc(doc(db,"study",name),{
+    time:data[name]
+  });
+
+}
+
+function startRealtime(){
+
+  const ref = collection(db,"study");
+
+  onSnapshot(ref,(snap)=>{
+
+    snap.docChanges().forEach(change=>{
+      const d = change.doc.data();
+      data[change.doc.id] = d.time || 0;
+    });
+
+    render();
+
+  });
+
+}
+
+window.add = add;
+
+startRealtime();
+
+</script>
+
+</body>
+</html>
