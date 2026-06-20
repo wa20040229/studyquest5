@@ -7,52 +7,63 @@
 
 <style>
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#0f172a,#1e1b4b);color:white;padding:18px}
-h1{text-align:center;font-size:32px}
-.subtitle{text-align:center;color:#c7d2fe;margin-bottom:18px}
-.card,.loginBox,#ranking,#totalBox,#tools{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:18px;margin-bottom:16px;border-radius:22px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.name{font-size:24px;font-weight:800}
-.time{font-size:42px;font-weight:900;margin:12px 0;color:#a5f3fc}
+h1{text-align:center;font-size:32px;margin:10px 0}.subtitle{text-align:center;color:#c7d2fe;margin-bottom:18px}
+.card,.box{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:18px;margin-bottom:16px;border-radius:22px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.name{font-size:24px;font-weight:800}.time{font-size:42px;font-weight:900;margin:12px 0;color:#a5f3fc}
 .btns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 button,input{border:none;border-radius:16px;padding:14px;font-size:16px;font-weight:800}
 button{color:white;background:linear-gradient(135deg,#6366f1,#06b6d4)}
-input{width:100%;box-sizing:border-box;margin:8px 0}
-.logoutBtn,.exportBtn{width:100%;margin-top:10px;background:rgba(255,255,255,.18)}
-.rankLine{font-size:20px;font-weight:700;padding:8px 0}
-.hidden{display:none}
-#error{color:#fecaca;font-weight:800;margin-top:12px}
-.small{color:#c7d2fe;font-size:14px}
+input{width:100%;box-sizing:border-box;margin:8px 0}.wide{width:100%;margin-top:10px}
+.danger{background:linear-gradient(135deg,#ef4444,#f97316)}.subbtn{background:rgba(255,255,255,.18)}
+.rankLine,.histLine{font-size:18px;font-weight:700;padding:7px 0}.hidden{display:none}
+#error{color:#fecaca;font-weight:800;margin-top:12px}.small{color:#c7d2fe;font-size:13px}
+.graph{display:flex;align-items:end;gap:6px;height:130px;margin-top:12px}
+.bar{flex:1;background:linear-gradient(180deg,#22d3ee,#6366f1);border-radius:8px 8px 0 0;min-height:4px}
+.graphLabel{display:flex;gap:6px}.graphLabel span{flex:1;text-align:center;font-size:11px;color:#c7d2fe}
 </style>
 </head>
 
 <body>
 
 <h1>Study Quest 5</h1>
-<div class="subtitle">日別保存・家族リアルタイム勉強ランキング</div>
+<div class="subtitle">日別保存・履歴・CSV・グラフ対応</div>
 
-<div id="login" class="loginBox">
-  <h2>ログインしてください</h2>
+<div id="login" class="box">
+  <h2>ログイン</h2>
   <input id="email" type="email" placeholder="メールアドレス">
   <input id="password" type="password" placeholder="パスワード">
-  <button onclick="window.login()">ログイン</button>
+  <button class="wide" onclick="window.login()">ログイン</button>
   <div id="error"></div>
 </div>
 
 <div id="main" class="hidden">
   <div id="userInfo" class="subtitle"></div>
   <div id="todayTitle" class="subtitle"></div>
+
   <div id="app"></div>
-  <div id="ranking"></div>
-  <div id="totalBox"></div>
-  <div id="tools">
-    <button class="exportBtn" onclick="window.exportCSV()">CSVエクスポート</button>
-    <button class="logoutBtn" onclick="window.logout()">ログアウト</button>
+
+  <div id="ranking" class="box"></div>
+  <div id="totalBox" class="box"></div>
+  <div id="graphBox" class="box"></div>
+  <div id="historyBox" class="box"></div>
+
+  <div class="box">
+    <button class="wide danger" onclick="window.undoLast()">最後の操作を取り消す</button>
+    <button class="wide subbtn" onclick="window.exportDailyCSV()">日別CSVエクスポート</button>
+    <button class="wide subbtn" onclick="window.exportHistoryCSV()">履歴CSVエクスポート</button>
+    <button class="wide subbtn" onclick="window.logout()">ログアウト</button>
   </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, setDoc, collection, onSnapshot, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, collection, onSnapshot,
+  increment, serverTimestamp, addDoc, deleteDoc, query, orderBy, limit, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",
@@ -76,44 +87,63 @@ const allowedEmails = [
 const people = ["みく","けいと","なおこ"];
 let todayData = {みく:0,けいと:0,なおこ:0};
 let totalData = {みく:0,けいと:0,なおこ:0};
-let allRecords = [];
-let unsubscribe = null;
+let dailyRecords = [];
+let historyRecords = [];
+let unsubDaily = null;
+let unsubHistory = null;
+let currentUser = null;
 
 function todayKey(){
   const parts = new Intl.DateTimeFormat("ja-JP",{
-    timeZone:"Asia/Tokyo",
-    year:"numeric",month:"2-digit",day:"2-digit"
+    timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"
   }).formatToParts(new Date());
-  const y = parts.find(p=>p.type==="year").value;
-  const m = parts.find(p=>p.type==="month").value;
-  const d = parts.find(p=>p.type==="day").value;
-  return `${y}-${m}-${d}`;
+  return `${parts.find(p=>p.type==="year").value}-${parts.find(p=>p.type==="month").value}-${parts.find(p=>p.type==="day").value}`;
+}
+
+function nowText(){
+  return new Intl.DateTimeFormat("ja-JP",{
+    timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit",second:"2-digit"
+  }).format(new Date());
+}
+
+function lastDays(n){
+  const arr=[];
+  for(let i=n-1;i>=0;i--){
+    const d=new Date();
+    d.setDate(d.getDate()-i);
+    const parts=new Intl.DateTimeFormat("ja-JP",{
+      timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"
+    }).formatToParts(d);
+    arr.push(`${parts.find(p=>p.type==="year").value}-${parts.find(p=>p.type==="month").value}-${parts.find(p=>p.type==="day").value}`);
+  }
+  return arr;
 }
 
 window.login = async function(){
   try{
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
+    const email=document.getElementById("email").value.trim();
+    const password=document.getElementById("password").value;
     await signInWithEmailAndPassword(auth,email,password);
   }catch(e){
-    document.getElementById("error").textContent = e.message;
+    document.getElementById("error").textContent=e.message;
   }
 };
 
 window.logout = async function(){
-  if(unsubscribe) unsubscribe();
+  if(unsubDaily) unsubDaily();
+  if(unsubHistory) unsubHistory();
   await signOut(auth);
 };
 
 onAuthStateChanged(auth,user=>{
-  if(!user){ showLogin(); return; }
-
+  if(!user){showLogin();return;}
   if(!allowedEmails.includes(user.email)){
     showLogin("このアカウントは利用できません：" + user.email);
     signOut(auth);
     return;
   }
-
+  currentUser=user;
   showMain(user);
   startRealtime();
 });
@@ -121,22 +151,102 @@ onAuthStateChanged(auth,user=>{
 function showLogin(msg=""){
   document.getElementById("login").classList.remove("hidden");
   document.getElementById("main").classList.add("hidden");
-  document.getElementById("error").textContent = msg;
+  document.getElementById("error").textContent=msg;
 }
 
 function showMain(user){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("main").classList.remove("hidden");
-  document.getElementById("userInfo").textContent = "ログイン中：" + user.email;
-  document.getElementById("todayTitle").textContent = "今日：" + todayKey();
+  document.getElementById("userInfo").textContent="ログイン中：" + user.email;
+  document.getElementById("todayTitle").textContent="今日：" + todayKey();
+}
+
+async function add(name,min){
+  const date=todayKey();
+  const id=`${date}_${name}`;
+
+  await setDoc(doc(db,"dailyStudy",id),{
+    date:date,
+    name:name,
+    time:increment(min),
+    updatedAt:serverTimestamp()
+  },{merge:true});
+
+  await addDoc(collection(db,"studyHistory"),{
+    date:date,
+    datetime:nowText(),
+    name:name,
+    minutes:min,
+    userEmail:currentUser.email,
+    createdAt:serverTimestamp()
+  });
+}
+
+window.add=add;
+
+window.undoLast = async function(){
+  if(!confirm("最後の操作を取り消しますか？")) return;
+
+  const q=query(collection(db,"studyHistory"),orderBy("createdAt","desc"),limit(1));
+  const snap=await getDocs(q);
+
+  if(snap.empty){
+    alert("取り消す履歴がありません");
+    return;
+  }
+
+  const target=snap.docs[0];
+  const d=target.data();
+
+  await setDoc(doc(db,"dailyStudy",`${d.date}_${d.name}`),{
+    date:d.date,
+    name:d.name,
+    time:increment(-Number(d.minutes||0)),
+    updatedAt:serverTimestamp()
+  },{merge:true});
+
+  await deleteDoc(target.ref);
+};
+
+function startRealtime(){
+  if(unsubDaily) unsubDaily();
+  if(unsubHistory) unsubHistory();
+
+  unsubDaily=onSnapshot(collection(db,"dailyStudy"),snap=>{
+    todayData={みく:0,けいと:0,なおこ:0};
+    totalData={みく:0,けいと:0,なおこ:0};
+    dailyRecords=[];
+    const today=todayKey();
+
+    snap.forEach(docSnap=>{
+      const d=docSnap.data();
+      if(!people.includes(d.name)) return;
+      const time=Number(d.time||0);
+      dailyRecords.push({date:d.date,name:d.name,time:time});
+      totalData[d.name]+=time;
+      if(d.date===today) todayData[d.name]+=time;
+    });
+
+    dailyRecords.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
+    render();
+  });
+
+  unsubHistory=onSnapshot(query(collection(db,"studyHistory"),orderBy("createdAt","desc"),limit(20)),snap=>{
+    historyRecords=[];
+    snap.forEach(docSnap=>{
+      const d=docSnap.data();
+      historyRecords.push({id:docSnap.id,...d});
+    });
+    render();
+  });
 }
 
 function render(){
-  const appDiv = document.getElementById("app");
-  appDiv.innerHTML = "";
+  const appDiv=document.getElementById("app");
+  appDiv.innerHTML="";
 
   people.forEach(name=>{
-    appDiv.innerHTML += `
+    appDiv.innerHTML+=`
       <div class="card">
         <div class="name">${name}</div>
         <div class="time">${todayData[name]}分</div>
@@ -151,72 +261,68 @@ function render(){
     `;
   });
 
-  const todayRank = [...people].sort((a,b)=>todayData[b]-todayData[a]);
-  document.getElementById("ranking").innerHTML =
-    "<h2>🏆 今日のランキング</h2>" +
+  const todayRank=[...people].sort((a,b)=>todayData[b]-todayData[a]);
+  document.getElementById("ranking").innerHTML=
+    "<h2>🏆 今日のランキング</h2>"+
     todayRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${todayData[n]}分</div>`).join("");
 
-  const totalRank = [...people].sort((a,b)=>totalData[b]-totalData[a]);
-  document.getElementById("totalBox").innerHTML =
-    "<h2>🏅 累計ランキング</h2>" +
+  const totalRank=[...people].sort((a,b)=>totalData[b]-totalData[a]);
+  document.getElementById("totalBox").innerHTML=
+    "<h2>🏅 累計ランキング</h2>"+
     totalRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${totalData[n]}分</div>`).join("");
+
+  renderGraph();
+  renderHistory();
 }
 
-async function add(name,min){
-  const date = todayKey();
-  const id = `${date}_${name}`;
-  await setDoc(doc(db,"dailyStudy",id),{
-    date:date,
-    name:name,
-    time:increment(min),
-    updatedAt:serverTimestamp()
-  },{merge:true});
-}
-
-function startRealtime(){
-  if(unsubscribe) unsubscribe();
-
-  unsubscribe = onSnapshot(collection(db,"dailyStudy"),snap=>{
-    todayData = {みく:0,けいと:0,なおこ:0};
-    totalData = {みく:0,けいと:0,なおこ:0};
-    allRecords = [];
-    const today = todayKey();
-
-    snap.forEach(docSnap=>{
-      const d = docSnap.data();
-      if(!d.name || !people.includes(d.name)) return;
-      const time = Number(d.time || 0);
-      const date = d.date || "";
-
-      allRecords.push({date:date,name:d.name,time:time});
-
-      totalData[d.name] += time;
-      if(date === today){
-        todayData[d.name] += time;
-      }
-    });
-
-    allRecords.sort((a,b)=>a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
-    render();
-  });
-}
-
-window.add = add;
-
-window.exportCSV = function(){
-  let csv = "日付,名前,勉強時間\n";
-  allRecords.forEach(r=>{
-    csv += `${r.date},${r.name},${r.time}\n`;
+function renderGraph(){
+  const days=lastDays(7);
+  const dayTotals=days.map(date=>{
+    let sum=0;
+    dailyRecords.forEach(r=>{if(r.date===date) sum+=r.time;});
+    return {date:date,value:sum};
   });
 
-  const blob = new Blob(["\uFEFF" + csv],{type:"text/csv;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `studyquest_${todayKey()}.csv`;
+  const max=Math.max(...dayTotals.map(x=>x.value),1);
+
+  document.getElementById("graphBox").innerHTML=
+    "<h2>📈 7日間グラフ</h2>"+
+    `<div class="graph">`+
+    dayTotals.map(x=>`<div class="bar" style="height:${Math.max(4,(x.value/max)*120)}px" title="${x.date} ${x.value}分"></div>`).join("")+
+    `</div><div class="graphLabel">`+
+    dayTotals.map(x=>`<span>${x.date.slice(5)}</span>`).join("")+
+    `</div><div class="small">家族合計の勉強時間です</div>`;
+}
+
+function renderHistory(){
+  document.getElementById("historyBox").innerHTML=
+    "<h2>📝 最近の履歴</h2>"+
+    (historyRecords.length
+      ? historyRecords.map(h=>`<div class="histLine">${h.datetime || h.date}　${h.name}　+${h.minutes}分</div>`).join("")
+      : `<div class="small">まだ履歴がありません</div>`);
+}
+
+window.exportDailyCSV=function(){
+  let csv="日付,名前,勉強時間\n";
+  dailyRecords.forEach(r=>{csv+=`${r.date},${r.name},${r.time}\n`;});
+  downloadCSV(csv,`studyquest_daily_${todayKey()}.csv`);
+};
+
+window.exportHistoryCSV=function(){
+  let csv="日時,日付,名前,追加時間,入力者\n";
+  historyRecords.forEach(r=>{csv+=`${r.datetime||""},${r.date||""},${r.name||""},${r.minutes||0},${r.userEmail||""}\n`;});
+  downloadCSV(csv,`studyquest_history_${todayKey()}.csv`);
+};
+
+function downloadCSV(csv,filename){
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=filename;
   a.click();
   URL.revokeObjectURL(url);
-};
+}
 </script>
 
 </body>
