@@ -3,30 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Study Quest 6</title>
+<title>Study Quest 6.3</title>
 <style>
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#0f172a,#1e1b4b);color:white;padding:18px}
 h1{text-align:center;font-size:32px}.subtitle{text-align:center;color:#c7d2fe;margin-bottom:18px}
 .card,.box{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:18px;margin-bottom:16px;border-radius:22px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .name{font-size:24px;font-weight:800}.time{font-size:42px;font-weight:900;margin:12px 0;color:#a5f3fc}
 .btns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.dateGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 button,input,select{border:none;border-radius:16px;padding:14px;font-size:16px;font-weight:800}
 button{color:white;background:linear-gradient(135deg,#6366f1,#06b6d4)}
 input,select{width:100%;box-sizing:border-box;margin:8px 0}
+label{display:block;color:#dbeafe;font-size:13px;font-weight:900;margin-top:8px}
 .wide{width:100%;margin-top:10px}.danger{background:linear-gradient(135deg,#ef4444,#f97316)}.subbtn{background:rgba(255,255,255,.18)}
 .rankLine,.histLine{font-size:18px;font-weight:700;padding:7px 0}.hidden{display:none}
 #error,#appError{color:#fecaca;font-weight:800;margin-top:12px;white-space:pre-wrap}
-.small{color:#c7d2fe;font-size:13px}.progressOuter{height:14px;background:rgba(255,255,255,.2);border-radius:999px;overflow:hidden;margin:10px 0}
+.small{color:#c7d2fe;font-size:13px;line-height:1.45}.progressOuter{height:14px;background:rgba(255,255,255,.2);border-radius:999px;overflow:hidden;margin:10px 0}
 .progressInner{height:100%;background:linear-gradient(90deg,#22d3ee,#a78bfa)}
 .graph{display:flex;align-items:end;gap:6px;height:130px;margin-top:12px}
 .bar{flex:1;background:linear-gradient(180deg,#22d3ee,#6366f1);border-radius:8px 8px 0 0;min-height:4px}
 .graphLabel{display:flex;gap:6px}.graphLabel span{flex:1;text-align:center;font-size:11px;color:#c7d2fe}
+@media(max-width:430px){body{padding:12px}.dateGrid{grid-template-columns:1fr}.btns{grid-template-columns:repeat(5,1fr);gap:5px}button,input,select{font-size:15px;padding:12px}.rankLine{font-size:16px}}
 </style>
 </head>
 <body>
 
-<h1>Study Quest 6</h1>
-<div class="subtitle">教材別・期末試験モード</div>
+<h1>Study Quest 6.3</h1>
+<div class="subtitle">教材別・期末試験モード / 教科分類・勉強期間・教材別時間対応</div>
 
 <div id="login" class="box">
   <h2>ログイン</h2>
@@ -45,15 +48,41 @@ input,select{width:100%;box-sizing:border-box;margin:8px 0}
 
   <div id="examBox" class="box">
     <h2>📚 期末試験モード</h2>
+    <label>人</label>
     <select id="matPerson">
       <option value="みく">みく</option>
       <option value="けいと">けいと</option>
       <option value="なおこ">なおこ</option>
     </select>
-    <input id="matName" placeholder="教材名 例：数学ワーク / 英語プリント">
+    <label>教科分類</label>
+    <select id="matSubject">
+      <option value="国語">国語</option>
+      <option value="算数">算数</option>
+      <option value="理科">理科</option>
+      <option value="社会">社会</option>
+      <option value="英語">英語</option>
+      <option value="その他">その他</option>
+    </select>
+    <label>教材名</label>
+    <input id="matName" placeholder="教材名 例：漢字ドリル / 算数ワーク / 英語プリント">
+    <label>総量</label>
     <input id="matTotal" type="number" placeholder="全部で何ページ・何問？ 例：80">
+    <div class="dateGrid">
+      <div>
+        <label>勉強開始日</label>
+        <input id="matStartDate" type="date">
+      </div>
+      <div>
+        <label>勉強最終日</label>
+        <input id="matEndDate" type="date">
+      </div>
+    </div>
+    <label>試験日</label>
     <input id="matDate" type="date">
+    <label>この教材の1日の予定時間（分）</label>
+    <input id="matDailyMinutes" type="number" placeholder="例：30">
     <button class="wide" onclick="window.addMaterial()">教材を追加</button>
+    <div class="small" style="margin-top:10px">1日の量は「残り量 ÷ 勉強できる残り日数」で計算します。教科分類と教材ごとの予定時間も表示します。開始日前は「開始前」、最終日後は「期間終了」と表示します。</div>
     <div id="materials"></div>
   </div>
 
@@ -104,26 +133,49 @@ const people=["みく","けいと","なおこ"];
 let todayData={みく:0,けいと:0,なおこ:0};
 let totalData={みく:0,けいと:0,なおこ:0};
 let dailyRecords=[],historyRecords=[],materials=[];
+const subjects=["国語","算数","理科","社会","英語","その他"];
 let unsubDaily=null,unsubHistory=null,unsubMaterials=null,currentUser=null;
 
-function todayKey(){
-  const p=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+function dateParts(d){
+  const p=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
   return `${p.find(x=>x.type==="year").value}-${p.find(x=>x.type==="month").value}-${p.find(x=>x.type==="day").value}`;
 }
+function todayKey(){return dateParts(new Date());}
 function nowText(){
   return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date());
 }
 function lastDays(n){
   const arr=[];
-  for(let i=n-1;i>=0;i--){
-    const d=new Date(); d.setDate(d.getDate()-i);
-    const p=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
-    arr.push(`${p.find(x=>x.type==="year").value}-${p.find(x=>x.type==="month").value}-${p.find(x=>x.type==="day").value}`);
-  }
+  for(let i=n-1;i>=0;i--){const d=new Date(); d.setDate(d.getDate()-i); arr.push(dateParts(d));}
   return arr;
 }
+function toDate(s){return new Date(String(s||todayKey())+"T00:00:00");}
+function diffDays(a,b){return Math.ceil((toDate(a)-toDate(b))/86400000);}
+function addDays(s,n){const d=toDate(s); d.setDate(d.getDate()+n); return dateParts(d);}
 function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
 function showAppError(e){document.getElementById("appError").textContent="Firebaseエラー: "+(e.message||e);}
+function effectiveStart(m){return m.startDate || m.studyStartDate || todayKey();}
+function effectiveEnd(m){return m.endDate || m.studyEndDate || m.testDate || todayKey();}
+function calcMaterial(m){
+  const today=todayKey();
+  const start=effectiveStart(m);
+  const end=effectiveEnd(m);
+  const total=Number(m.total||0);
+  const done=Number(m.done||0);
+  const remain=Math.max(0,total-done);
+  const pct=total?Math.round(done/total*100):0;
+  let status="学習期間中";
+  if(diffDays(today,start)<0) status="開始前";
+  else if(diffDays(today,end)>0) status="期間終了";
+  else if(remain===0) status="完了";
+  const baseDate=diffDays(today,start)<0 ? start : today;
+  const studyDaysLeft=Math.max(1,diffDays(end,baseDate)+1);
+  const perDay=Math.ceil(remain/studyDaysLeft);
+  const dailyMinutes=Number(m.dailyMinutes||m.plannedMinutes||0);
+  const totalPlannedMinutes=dailyMinutes*studyDaysLeft;
+  const minutesPerUnit=perDay ? Math.round((dailyMinutes/perDay)*10)/10 : 0;
+  return {start,end,total,done,remain,pct,status,studyDaysLeft,perDay,dailyMinutes,totalPlannedMinutes,minutesPerUnit};
+}
 
 window.login=async function(){
   try{
@@ -157,6 +209,8 @@ function showMain(user){
   document.getElementById("main").classList.remove("hidden");
   document.getElementById("userInfo").textContent="ログイン中："+user.email;
   document.getElementById("todayTitle").textContent="今日："+todayKey();
+  document.getElementById("matStartDate").value=todayKey();
+  document.getElementById("matEndDate").value=addDays(todayKey(),7);
 }
 
 window.add=async function(name,min){
@@ -170,13 +224,19 @@ window.add=async function(name,min){
 window.addMaterial=async function(){
   try{
     const person=document.getElementById("matPerson").value;
+    const subject=document.getElementById("matSubject").value;
     const name=document.getElementById("matName").value.trim();
     const total=Number(document.getElementById("matTotal").value||0);
+    const startDate=document.getElementById("matStartDate").value;
+    const endDate=document.getElementById("matEndDate").value;
     const testDate=document.getElementById("matDate").value;
-    if(!name||!total||!testDate){alert("教材名・総量・試験日を入れてください");return;}
-    await addDoc(collection(db,"examMaterials"),{person,name,total,done:0,testDate,createdAtMs:Date.now(),updatedAtMs:Date.now()});
+    const dailyMinutes=Number(document.getElementById("matDailyMinutes").value||0);
+    if(!name||!total||!startDate||!endDate||!testDate){alert("教材名・総量・勉強開始日・勉強最終日・試験日を入れてください");return;}
+    if(diffDays(endDate,startDate)<0){alert("勉強最終日は、勉強開始日以降にしてください");return;}
+    await addDoc(collection(db,"examMaterials"),{person,subject,name,total,done:0,startDate,endDate,testDate,dailyMinutes,createdAtMs:Date.now(),updatedAtMs:Date.now()});
     document.getElementById("matName").value="";
     document.getElementById("matTotal").value="";
+    document.getElementById("matDailyMinutes").value="";
   }catch(e){showAppError(e);}
 };
 
@@ -232,7 +292,7 @@ function startRealtime(){
   unsubMaterials=onSnapshot(collection(db,"examMaterials"),snap=>{
     materials=[];
     snap.forEach(ds=>materials.push({id:ds.id,...ds.data()}));
-    materials.sort((a,b)=>(a.testDate||"").localeCompare(b.testDate||"")||(a.person||"").localeCompare(b.person||""));
+    materials.sort((a,b)=>(a.person||"").localeCompare(b.person||"")||(a.subject||"その他").localeCompare(b.subject||"その他")||(effectiveEnd(a)||"").localeCompare(effectiveEnd(b)||""));
     render();
   },showAppError);
 }
@@ -262,17 +322,30 @@ function render(){
 function renderMaterials(){
   const box=document.getElementById("materials");
   if(!materials.length){box.innerHTML=`<div class="small">まだ教材がありません</div>`;return;}
-  box.innerHTML=materials.map(m=>{
-    const total=Number(m.total||0),done=Number(m.done||0),remain=Math.max(0,total-done);
-    const days=Math.max(1,Math.ceil((new Date(m.testDate+"T00:00:00")-new Date())/86400000));
-    const perDay=Math.ceil(remain/days);
-    const pct=total?Math.round(done/total*100):0;
+
+  const summary={};
+  materials.forEach(m=>{
+    const subj=m.subject || "その他";
+    const c=calcMaterial(m);
+    if(!summary[subj]) summary[subj]={count:0,remain:0,dailyMinutes:0};
+    summary[subj].count++; summary[subj].remain+=c.remain; summary[subj].dailyMinutes+=c.dailyMinutes;
+  });
+  const summaryHtml=`<div class="box" style="margin-top:14px">
+    <h3>📌 教科別まとめ</h3>
+    ${subjects.filter(s=>summary[s]).map(s=>`<div class="rankLine">${s}：${summary[s].count}教材 / 残り${summary[s].remain} / 予定${summary[s].dailyMinutes}分/日</div>`).join("")}
+  </div>`;
+
+  const cards=materials.map(m=>{
+    const c=calcMaterial(m);
+    const subj=m.subject || "その他";
     return `
       <div class="card">
-        <div class="name">${esc(m.person)}：${esc(m.name)}</div>
-        <div class="small">試験日：${esc(m.testDate)} / 残り${days}日 / 1日 ${perDay} ずつ</div>
-        <div class="progressOuter"><div class="progressInner" style="width:${Math.min(100,pct)}%"></div></div>
-        <div class="rankLine">${done} / ${total}（残り ${remain}）</div>
+        <div class="name">${esc(m.person)}：${esc(subj)}｜${esc(m.name)}</div>
+        <div class="small">勉強期間：${esc(c.start)} 〜 ${esc(c.end)}</div>
+        <div class="small">試験日：${esc(m.testDate)} / 状態：${c.status} / 学習残り${c.studyDaysLeft}日 / 1日 ${c.perDay} ずつ</div>
+        <div class="small">予定時間：${c.dailyMinutes?`${c.dailyMinutes}分/日（残り期間合計 ${c.totalPlannedMinutes}分）`:"未設定"}${c.dailyMinutes&&c.perDay?` / 目安：1つあたり約${c.minutesPerUnit}分`:""}</div>
+        <div class="progressOuter"><div class="progressInner" style="width:${Math.min(100,c.pct)}%"></div></div>
+        <div class="rankLine">${c.done} / ${c.total}（残り ${c.remain}）</div>
         <div class="btns">
           <button onclick="window.addProgress('${m.id}',1)">+1</button>
           <button onclick="window.addProgress('${m.id}',5)">+5</button>
@@ -282,6 +355,7 @@ function renderMaterials(){
         </div>
       </div>`;
   }).join("");
+  box.innerHTML=summaryHtml+cards;
 }
 
 function renderGraph(){
