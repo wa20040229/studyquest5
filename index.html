@@ -3,33 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Study Quest 6.3</title>
+<title>Study Quest 7</title>
 <style>
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#0f172a,#1e1b4b);color:white;padding:18px}
-h1{text-align:center;font-size:32px}.subtitle{text-align:center;color:#c7d2fe;margin-bottom:18px}
-.card,.box{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:18px;margin-bottom:16px;border-radius:22px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.name{font-size:24px;font-weight:800}.time{font-size:42px;font-weight:900;margin:12px 0;color:#a5f3fc}
-.btns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.dateGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-button,input,select{border:none;border-radius:16px;padding:14px;font-size:16px;font-weight:800}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#0f172a,#1e1b4b);color:white;padding:14px}
+h1{text-align:center;font-size:30px;margin:10px 0}.subtitle{text-align:center;color:#c7d2fe;margin-bottom:14px}
+.box,.card{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:16px;margin-bottom:14px;border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;position:sticky;top:0;z-index:10;background:#0f172a;padding:8px 0}
+.tabBtn{font-size:13px;padding:10px 4px;border-radius:14px;background:rgba(255,255,255,.16)}
+.tabBtn.active{background:linear-gradient(135deg,#6366f1,#06b6d4)}
+button,input,select{border:none;border-radius:14px;padding:13px;font-size:16px;font-weight:800}
 button{color:white;background:linear-gradient(135deg,#6366f1,#06b6d4)}
-input,select{width:100%;box-sizing:border-box;margin:8px 0}
-label{display:block;color:#dbeafe;font-size:13px;font-weight:900;margin-top:8px}
-.wide{width:100%;margin-top:10px}.danger{background:linear-gradient(135deg,#ef4444,#f97316)}.subbtn{background:rgba(255,255,255,.18)}
-.rankLine,.histLine{font-size:18px;font-weight:700;padding:7px 0}.hidden{display:none}
+input,select{width:100%;box-sizing:border-box;margin:7px 0}
+.wide{width:100%;margin-top:9px}.danger{background:linear-gradient(135deg,#ef4444,#f97316)}.subbtn{background:rgba(255,255,255,.18)}
+.hidden{display:none}.name{font-size:22px;font-weight:900}.time{font-size:40px;font-weight:900;margin:10px 0;color:#a5f3fc}
+.btns{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.btns3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.rankLine,.taskLine,.histLine{font-size:17px;font-weight:700;padding:7px 0}.small{color:#c7d2fe;font-size:13px;line-height:1.5}
 #error,#appError{color:#fecaca;font-weight:800;margin-top:12px;white-space:pre-wrap}
-.small{color:#c7d2fe;font-size:13px;line-height:1.45}.progressOuter{height:14px;background:rgba(255,255,255,.2);border-radius:999px;overflow:hidden;margin:10px 0}
+.progressOuter{height:14px;background:rgba(255,255,255,.2);border-radius:999px;overflow:hidden;margin:10px 0}
 .progressInner{height:100%;background:linear-gradient(90deg,#22d3ee,#a78bfa)}
+.bigGoal{font-size:34px;font-weight:900;color:#fde68a;margin:8px 0}
 .graph{display:flex;align-items:end;gap:6px;height:130px;margin-top:12px}
 .bar{flex:1;background:linear-gradient(180deg,#22d3ee,#6366f1);border-radius:8px 8px 0 0;min-height:4px}
 .graphLabel{display:flex;gap:6px}.graphLabel span{flex:1;text-align:center;font-size:11px;color:#c7d2fe}
-@media(max-width:430px){body{padding:12px}.dateGrid{grid-template-columns:1fr}.btns{grid-template-columns:repeat(5,1fr);gap:5px}button,input,select{font-size:15px;padding:12px}.rankLine{font-size:16px}}
 </style>
 </head>
 <body>
 
-<h1>Study Quest 6.3</h1>
-<div class="subtitle">教材別・期末試験モード / 教科分類・勉強期間・教材別時間対応</div>
+<h1>Study Quest 7</h1>
+<div class="subtitle">今日やること・教材管理・勉強時間・ランキング</div>
 
 <div id="login" class="box">
   <h2>ログイン</h2>
@@ -44,137 +45,57 @@ label{display:block;color:#dbeafe;font-size:13px;font-weight:900;margin-top:8px}
   <div id="todayTitle" class="subtitle"></div>
   <div id="appError"></div>
 
-  <div id="app"></div>
-
-  <div id="examBox" class="box">
-    <h2>📚 期末試験モード</h2>
-    <label>人</label>
-    <select id="matPerson">
-      <option value="みく">みく</option>
-      <option value="けいと">けいと</option>
-      <option value="なおこ">なおこ</option>
-    </select>
-    <label>教科分類</label>
-    <select id="matSubject">
-      <option value="国語">国語</option>
-      <option value="算数">算数</option>
-      <option value="理科">理科</option>
-      <option value="社会">社会</option>
-      <option value="英語">英語</option>
-      <option value="その他">その他</option>
-    </select>
-    <label>教材名</label>
-    <input id="matName" placeholder="教材名 例：漢字ドリル / 算数ワーク / 英語プリント">
-    <label>総量</label>
-    <input id="matTotal" type="number" placeholder="全部で何ページ・何問？ 例：80">
-    <div class="dateGrid">
-      <div>
-        <label>勉強開始日</label>
-        <input id="matStartDate" type="date">
-      </div>
-      <div>
-        <label>勉強最終日</label>
-        <input id="matEndDate" type="date">
-      </div>
-    </div>
-    <label>試験日</label>
-    <input id="matDate" type="date">
-    <label>この教材の1日の予定時間（分）</label>
-    <input id="matDailyMinutes" type="number" placeholder="例：30">
-    <button class="wide" onclick="window.addMaterial()">教材を追加</button>
-    <div class="small" style="margin-top:10px">1日の量は「残り量 ÷ 勉強できる残り日数」で計算します。教科分類と教材ごとの予定時間も表示します。開始日前は「開始前」、最終日後は「期間終了」と表示します。</div>
-    <div id="materials"></div>
+  <div class="tabs">
+    <button class="tabBtn active" id="tab-today" onclick="window.showTab('today')">今日</button>
+    <button class="tabBtn" id="tab-materials" onclick="window.showTab('materials')">教材</button>
+    <button class="tabBtn" id="tab-time" onclick="window.showTab('time')">時間</button>
+    <button class="tabBtn" id="tab-rank" onclick="window.showTab('rank')">競争</button>
   </div>
 
-  <div id="ranking" class="box"></div>
-  <div id="totalBox" class="box"></div>
-  <div id="graphBox" class="box"></div>
-  <div id="historyBox" class="box"></div>
-
-  <div class="box">
-    <button class="wide danger" onclick="window.undoLast()">最後の操作を取り消す</button>
-    <button class="wide subbtn" onclick="window.exportDailyCSV()">日別CSVエクスポート</button>
-    <button class="wide subbtn" onclick="window.exportHistoryCSV()">履歴CSVエクスポート</button>
-    <button class="wide subbtn" onclick="window.logout()">ログアウト</button>
-  </div>
+  <section id="view-today"></section>
+  <section id="view-materials" class="hidden"></section>
+  <section id="view-time" class="hidden"></section>
+  <section id="view-rank" class="hidden"></section>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, collection, onSnapshot,
-  increment, addDoc, deleteDoc, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged,
-  signOut, setPersistence, browserLocalPersistence
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, collection, onSnapshot, increment, addDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",
-  authDomain: "studycount-wata.firebaseapp.com",
-  projectId: "studycount-wata",
-  storageBucket: "studycount-wata.firebasestorage.app",
-  messagingSenderId: "497085827292",
-  appId: "1:497085827292:web:f4085fd6190eb853150c19"
-};
-
+const firebaseConfig={apiKey:"AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",authDomain:"studycount-wata.firebaseapp.com",projectId:"studycount-wata",storageBucket:"studycount-wata.firebasestorage.app",messagingSenderId:"497085827292",appId:"1:497085827292:web:f4085fd6190eb853150c19"};
 const firebaseApp=initializeApp(firebaseConfig);
 const db=getFirestore(firebaseApp);
 const auth=getAuth(firebaseApp);
 
-const allowedEmails=[
-  "wata20040229@gmail.com",
-  "wawawawayanakemi@gmail.com",
-  "ke.2009.mi.2013@gmail.com"
-];
-
+const allowedEmails=["wata20040229@gmail.com","wawawawayanakemi@gmail.com","ke.2009.mi.2013@gmail.com"];
 const people=["みく","けいと","なおこ"];
+const subjects=["国語","算数","数学","理科","社会","英語","その他"];
+
 let todayData={みく:0,けいと:0,なおこ:0};
 let totalData={みく:0,けいと:0,なおこ:0};
 let dailyRecords=[],historyRecords=[],materials=[];
-const subjects=["国語","算数","理科","社会","英語","その他"];
-let unsubDaily=null,unsubHistory=null,unsubMaterials=null,currentUser=null;
+let unsubDaily=null,unsubHistory=null,unsubMaterials=null,currentUser=null,currentTab="today";
 
-function dateParts(d){
-  const p=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
+function todayKey(){
+  const p=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
   return `${p.find(x=>x.type==="year").value}-${p.find(x=>x.type==="month").value}-${p.find(x=>x.type==="day").value}`;
 }
-function todayKey(){return dateParts(new Date());}
 function nowText(){
   return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date());
 }
-function lastDays(n){
-  const arr=[];
-  for(let i=n-1;i>=0;i--){const d=new Date(); d.setDate(d.getDate()-i); arr.push(dateParts(d));}
-  return arr;
-}
-function toDate(s){return new Date(String(s||todayKey())+"T00:00:00");}
-function diffDays(a,b){return Math.ceil((toDate(a)-toDate(b))/86400000);}
-function addDays(s,n){const d=toDate(s); d.setDate(d.getDate()+n); return dateParts(d);}
+function toDate(s){return new Date(s+"T00:00:00");}
+function diffDays(a,b){return Math.floor((toDate(b)-toDate(a))/86400000)+1;}
 function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
 function showAppError(e){document.getElementById("appError").textContent="Firebaseエラー: "+(e.message||e);}
-function effectiveStart(m){return m.startDate || m.studyStartDate || todayKey();}
-function effectiveEnd(m){return m.endDate || m.studyEndDate || m.testDate || todayKey();}
-function calcMaterial(m){
-  const today=todayKey();
-  const start=effectiveStart(m);
-  const end=effectiveEnd(m);
-  const total=Number(m.total||0);
-  const done=Number(m.done||0);
-  const remain=Math.max(0,total-done);
-  const pct=total?Math.round(done/total*100):0;
-  let status="学習期間中";
-  if(diffDays(today,start)<0) status="開始前";
-  else if(diffDays(today,end)>0) status="期間終了";
-  else if(remain===0) status="完了";
-  const baseDate=diffDays(today,start)<0 ? start : today;
-  const studyDaysLeft=Math.max(1,diffDays(end,baseDate)+1);
-  const perDay=Math.ceil(remain/studyDaysLeft);
-  const dailyMinutes=Number(m.dailyMinutes||m.plannedMinutes||0);
-  const totalPlannedMinutes=dailyMinutes*studyDaysLeft;
-  const minutesPerUnit=perDay ? Math.round((dailyMinutes/perDay)*10)/10 : 0;
-  return {start,end,total,done,remain,pct,status,studyDaysLeft,perDay,dailyMinutes,totalPlannedMinutes,minutesPerUnit};
+function lastDays(n){
+  const arr=[];
+  for(let i=n-1;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const p=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
+    arr.push(`${p.find(x=>x.type==="year").value}-${p.find(x=>x.type==="month").value}-${p.find(x=>x.type==="day").value}`);
+  }
+  return arr;
 }
 
 window.login=async function(){
@@ -184,19 +105,15 @@ window.login=async function(){
   }catch(e){document.getElementById("error").textContent=e.message;}
 };
 window.logout=async function(){
-  if(unsubDaily)unsubDaily(); if(unsubHistory)unsubHistory(); if(unsubMaterials)unsubMaterials();
+  if(unsubDaily)unsubDaily();if(unsubHistory)unsubHistory();if(unsubMaterials)unsubMaterials();
   await signOut(auth);
 };
-
 await setPersistence(auth,browserLocalPersistence);
 
 onAuthStateChanged(auth,user=>{
   if(!user){showLogin();return;}
-  if(!allowedEmails.includes(user.email)){
-    showLogin("このアカウントは利用できません："+user.email);
-    signOut(auth); return;
-  }
-  currentUser=user; showMain(user); startRealtime();
+  if(!allowedEmails.includes(user.email)){showLogin("このアカウントは利用できません："+user.email);signOut(auth);return;}
+  currentUser=user;showMain(user);startRealtime();
 });
 
 function showLogin(msg=""){
@@ -209,9 +126,16 @@ function showMain(user){
   document.getElementById("main").classList.remove("hidden");
   document.getElementById("userInfo").textContent="ログイン中："+user.email;
   document.getElementById("todayTitle").textContent="今日："+todayKey();
-  document.getElementById("matStartDate").value=todayKey();
-  document.getElementById("matEndDate").value=addDays(todayKey(),7);
 }
+
+window.showTab=function(tab){
+  currentTab=tab;
+  ["today","materials","time","rank"].forEach(t=>{
+    document.getElementById("view-"+t).classList.toggle("hidden",t!==tab);
+    document.getElementById("tab-"+t).classList.toggle("active",t===tab);
+  });
+  render();
+};
 
 window.add=async function(name,min){
   try{
@@ -219,38 +143,6 @@ window.add=async function(name,min){
     await setDoc(doc(db,"dailyStudy",`${date}_${name}`),{date,name,time:increment(min),updatedAtMs:Date.now()},{merge:true});
     await addDoc(collection(db,"studyHistory"),{date,datetime:nowText(),name,minutes:min,userEmail:currentUser.email,createdAtMs:Date.now()});
   }catch(e){showAppError(e);}
-};
-
-window.addMaterial=async function(){
-  try{
-    const person=document.getElementById("matPerson").value;
-    const subject=document.getElementById("matSubject").value;
-    const name=document.getElementById("matName").value.trim();
-    const total=Number(document.getElementById("matTotal").value||0);
-    const startDate=document.getElementById("matStartDate").value;
-    const endDate=document.getElementById("matEndDate").value;
-    const testDate=document.getElementById("matDate").value;
-    const dailyMinutes=Number(document.getElementById("matDailyMinutes").value||0);
-    if(!name||!total||!startDate||!endDate||!testDate){alert("教材名・総量・勉強開始日・勉強最終日・試験日を入れてください");return;}
-    if(diffDays(endDate,startDate)<0){alert("勉強最終日は、勉強開始日以降にしてください");return;}
-    await addDoc(collection(db,"examMaterials"),{person,subject,name,total,done:0,startDate,endDate,testDate,dailyMinutes,createdAtMs:Date.now(),updatedAtMs:Date.now()});
-    document.getElementById("matName").value="";
-    document.getElementById("matTotal").value="";
-    document.getElementById("matDailyMinutes").value="";
-  }catch(e){showAppError(e);}
-};
-
-window.addProgress=async function(id,n){
-  try{
-    const m=materials.find(x=>x.id===id); if(!m)return;
-    const done=Math.min(Number(m.total||0),Number(m.done||0)+n);
-    await setDoc(doc(db,"examMaterials",id),{done,updatedAtMs:Date.now()},{merge:true});
-  }catch(e){showAppError(e);}
-};
-
-window.deleteMaterial=async function(id){
-  if(!confirm("この教材を削除しますか？"))return;
-  await deleteDoc(doc(db,"examMaterials",id));
 };
 
 window.undoLast=async function(){
@@ -265,127 +157,175 @@ window.undoLast=async function(){
   }catch(e){showAppError(e);}
 };
 
+window.addMaterial=async function(){
+  try{
+    const person=document.getElementById("matPerson").value;
+    const subject=document.getElementById("matSubject").value;
+    const name=document.getElementById("matName").value.trim();
+    const total=Number(document.getElementById("matTotal").value||0);
+    const startDate=document.getElementById("matStart").value;
+    const endDate=document.getElementById("matEnd").value;
+    const testDate=document.getElementById("matExam").value;
+    if(!name||!total||!startDate||!endDate||!testDate){alert("教材名・総量・開始日・最終日・試験日を入れてください");return;}
+    if(toDate(endDate)<toDate(startDate)){alert("勉強最終日は開始日以降にしてください");return;}
+    await addDoc(collection(db,"examMaterials"),{person,subject,name,total,done:0,startDate,endDate,testDate,createdAtMs:Date.now(),updatedAtMs:Date.now()});
+    ["matName","matTotal","matStart","matEnd","matExam"].forEach(id=>document.getElementById(id).value="");
+  }catch(e){showAppError(e);}
+};
+window.addProgress=async function(id,n){
+  try{
+    const m=materials.find(x=>x.id===id);if(!m)return;
+    const done=Math.max(0,Math.min(Number(m.total||0),Number(m.done||0)+n));
+    await setDoc(doc(db,"examMaterials",id),{done,updatedAtMs:Date.now()},{merge:true});
+  }catch(e){showAppError(e);}
+};
+window.deleteMaterial=async function(id){
+  if(!confirm("この教材を削除しますか？"))return;
+  await deleteDoc(doc(db,"examMaterials",id));
+};
+
 function startRealtime(){
-  if(unsubDaily)unsubDaily(); if(unsubHistory)unsubHistory(); if(unsubMaterials)unsubMaterials();
+  if(unsubDaily)unsubDaily();if(unsubHistory)unsubHistory();if(unsubMaterials)unsubMaterials();
 
   unsubDaily=onSnapshot(collection(db,"dailyStudy"),snap=>{
-    todayData={みく:0,けいと:0,なおこ:0}; totalData={みく:0,けいと:0,なおこ:0}; dailyRecords=[];
+    todayData={みく:0,けいと:0,なおこ:0};totalData={みく:0,けいと:0,なおこ:0};dailyRecords=[];
     const today=todayKey();
     snap.forEach(ds=>{
-      const d=ds.data(); if(!people.includes(d.name))return;
+      const d=ds.data();if(!people.includes(d.name))return;
       const time=Number(d.time||0);
       dailyRecords.push({date:d.date,name:d.name,time});
-      totalData[d.name]+=time; if(d.date===today)todayData[d.name]+=time;
+      totalData[d.name]+=time;if(d.date===today)todayData[d.name]+=time;
     });
-    dailyRecords.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
-    render();
+    dailyRecords.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));render();
   },showAppError);
 
   unsubHistory=onSnapshot(collection(db,"studyHistory"),snap=>{
-    historyRecords=[];
-    snap.forEach(ds=>historyRecords.push({id:ds.id,...ds.data()}));
-    historyRecords.sort((a,b)=>Number(b.createdAtMs||0)-Number(a.createdAtMs||0));
-    historyRecords=historyRecords.slice(0,20);
-    render();
+    historyRecords=[];snap.forEach(ds=>historyRecords.push({id:ds.id,...ds.data()}));
+    historyRecords.sort((a,b)=>Number(b.createdAtMs||0)-Number(a.createdAtMs||0));historyRecords=historyRecords.slice(0,30);render();
   },showAppError);
 
   unsubMaterials=onSnapshot(collection(db,"examMaterials"),snap=>{
-    materials=[];
-    snap.forEach(ds=>materials.push({id:ds.id,...ds.data()}));
-    materials.sort((a,b)=>(a.person||"").localeCompare(b.person||"")||(a.subject||"その他").localeCompare(b.subject||"その他")||(effectiveEnd(a)||"").localeCompare(effectiveEnd(b)||""));
-    render();
+    materials=[];snap.forEach(ds=>materials.push({id:ds.id,...ds.data()}));
+    materials.sort((a,b)=>(a.person||"").localeCompare(b.person||"")||(a.endDate||"").localeCompare(b.endDate||""));render();
   },showAppError);
 }
 
-function render(){
-  const appDiv=document.getElementById("app"); appDiv.innerHTML="";
-  people.forEach(name=>{
-    appDiv.innerHTML+=`
-      <div class="card">
-        <div class="name">${name}</div>
-        <div class="time">${todayData[name]}分</div>
-        <div class="btns">
-          <button onclick="window.add('${name}',5)">+5</button>
-          <button onclick="window.add('${name}',10)">+10</button>
-          <button onclick="window.add('${name}',15)">+15</button>
-          <button onclick="window.add('${name}',30)">+30</button>
-          <button onclick="window.add('${name}',60)">+60</button>
-        </div>
-      </div>`;
-  });
-
-  document.getElementById("ranking").innerHTML="<h2>🏆 今日のランキング</h2>"+[...people].sort((a,b)=>todayData[b]-todayData[a]).map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${todayData[n]}分</div>`).join("");
-  document.getElementById("totalBox").innerHTML="<h2>🏅 累計ランキング</h2>"+[...people].sort((a,b)=>totalData[b]-totalData[a]).map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${totalData[n]}分</div>`).join("");
-  renderMaterials(); renderGraph(); renderHistory();
+function calcTask(m){
+  const today=todayKey(), total=Number(m.total||0), done=Number(m.done||0), remain=Math.max(0,total-done);
+  if(remain<=0)return {status:"完了",quota:0,remain,days:0,pct:100};
+  const pct=total?Math.round(done/total*100):0;
+  if(today<m.startDate)return {status:"開始前",quota:0,remain,days:diffDays(m.startDate,m.endDate),pct};
+  if(today>m.endDate)return {status:"期限超過",quota:remain,remain,days:0,pct};
+  const days=Math.max(1,diffDays(today,m.endDate));
+  return {status:"実行中",quota:Math.ceil(remain/days),remain,days,pct};
 }
+
+function render(){renderToday();renderMaterials();renderTime();renderRank();}
+
+function renderToday(){
+  const v=document.getElementById("view-today");
+  let html=`<div class="box"><h2>🔥 今日やること</h2><select id="todayPerson" onchange="window.renderTodayOnly()">`;
+  people.forEach(p=>html+=`<option value="${p}">${p}</option>`);
+  html+=`</select><div id="todayTasks"></div></div>`;
+  v.innerHTML=html;
+  window.renderTodayOnly();
+}
+window.renderTodayOnly=function(){
+  const sel=document.getElementById("todayPerson");if(!sel)return;
+  const person=sel.value;
+  const list=materials.filter(m=>m.person===person).map(m=>({m,t:calcTask(m)})).filter(x=>x.t.status==="実行中"||x.t.status==="期限超過");
+  const target=document.getElementById("todayTasks");
+  if(!list.length){target.innerHTML=`<div class="small">今日やる教材はありません</div>`;return;}
+  const totalQuota=list.reduce((s,x)=>s+x.t.quota,0);
+  target.innerHTML=`<div class="bigGoal">今日 合計 ${totalQuota}</div>`+
+    list.map(x=>`
+      <div class="card">
+        <div class="name">${esc(x.m.subject)}：${esc(x.m.name)}</div>
+        <div class="bigGoal">${x.t.quota}</div>
+        <div class="small">残り ${x.t.remain} / 期限 ${esc(x.m.endDate)} / ${x.t.status}</div>
+        <div class="progressOuter"><div class="progressInner" style="width:${x.t.pct}%"></div></div>
+        <div class="btns3">
+          <button onclick="window.addProgress('${x.m.id}',1)">+1</button>
+          <button onclick="window.addProgress('${x.m.id}',5)">+5</button>
+          <button onclick="window.addProgress('${x.m.id}',10)">+10</button>
+        </div>
+      </div>`).join("");
+};
 
 function renderMaterials(){
-  const box=document.getElementById("materials");
-  if(!materials.length){box.innerHTML=`<div class="small">まだ教材がありません</div>`;return;}
-
-  const summary={};
+  const v=document.getElementById("view-materials");
+  let html=`<div class="box"><h2>📚 教材管理</h2>
+    <select id="matPerson">${people.map(p=>`<option value="${p}">${p}</option>`).join("")}</select>
+    <select id="matSubject">${subjects.map(s=>`<option value="${s}">${s}</option>`).join("")}</select>
+    <input id="matName" placeholder="教材名">
+    <input id="matTotal" type="number" placeholder="総量（ページ・問）">
+    <input id="matStart" type="date">
+    <input id="matEnd" type="date">
+    <input id="matExam" type="date">
+    <button class="wide" onclick="window.addMaterial()">教材を追加</button>
+  </div><div class="box"><h2>登録済み教材</h2>`;
+  if(!materials.length)html+=`<div class="small">まだ教材がありません</div>`;
   materials.forEach(m=>{
-    const subj=m.subject || "その他";
-    const c=calcMaterial(m);
-    if(!summary[subj]) summary[subj]={count:0,remain:0,dailyMinutes:0};
-    summary[subj].count++; summary[subj].remain+=c.remain; summary[subj].dailyMinutes+=c.dailyMinutes;
+    const t=calcTask(m);
+    html+=`<div class="card">
+      <div class="name">${esc(m.person)}：${esc(m.subject)}：${esc(m.name)}</div>
+      <div class="small">開始 ${esc(m.startDate)} / 最終 ${esc(m.endDate)} / 試験 ${esc(m.testDate)}</div>
+      <div class="progressOuter"><div class="progressInner" style="width:${t.pct}%"></div></div>
+      <div class="rankLine">${m.done||0} / ${m.total}（残り ${t.remain}）</div>
+      <div class="small">今日の目安：${t.quota} / ${t.status}</div>
+      <div class="btns">
+        <button onclick="window.addProgress('${m.id}',1)">+1</button>
+        <button onclick="window.addProgress('${m.id}',5)">+5</button>
+        <button onclick="window.addProgress('${m.id}',10)">+10</button>
+        <button onclick="window.addProgress('${m.id}',-1)">-1</button>
+        <button onclick="window.deleteMaterial('${m.id}')">削除</button>
+      </div>
+    </div>`;
   });
-  const summaryHtml=`<div class="box" style="margin-top:14px">
-    <h3>📌 教科別まとめ</h3>
-    ${subjects.filter(s=>summary[s]).map(s=>`<div class="rankLine">${s}：${summary[s].count}教材 / 残り${summary[s].remain} / 予定${summary[s].dailyMinutes}分/日</div>`).join("")}
-  </div>`;
-
-  const cards=materials.map(m=>{
-    const c=calcMaterial(m);
-    const subj=m.subject || "その他";
-    return `
-      <div class="card">
-        <div class="name">${esc(m.person)}：${esc(subj)}｜${esc(m.name)}</div>
-        <div class="small">勉強期間：${esc(c.start)} 〜 ${esc(c.end)}</div>
-        <div class="small">試験日：${esc(m.testDate)} / 状態：${c.status} / 学習残り${c.studyDaysLeft}日 / 1日 ${c.perDay} ずつ</div>
-        <div class="small">予定時間：${c.dailyMinutes?`${c.dailyMinutes}分/日（残り期間合計 ${c.totalPlannedMinutes}分）`:"未設定"}${c.dailyMinutes&&c.perDay?` / 目安：1つあたり約${c.minutesPerUnit}分`:""}</div>
-        <div class="progressOuter"><div class="progressInner" style="width:${Math.min(100,c.pct)}%"></div></div>
-        <div class="rankLine">${c.done} / ${c.total}（残り ${c.remain}）</div>
-        <div class="btns">
-          <button onclick="window.addProgress('${m.id}',1)">+1</button>
-          <button onclick="window.addProgress('${m.id}',5)">+5</button>
-          <button onclick="window.addProgress('${m.id}',10)">+10</button>
-          <button onclick="window.addProgress('${m.id}',20)">+20</button>
-          <button onclick="window.deleteMaterial('${m.id}')">削除</button>
-        </div>
-      </div>`;
-  }).join("");
-  box.innerHTML=summaryHtml+cards;
+  v.innerHTML=html+`</div>`;
 }
 
-function renderGraph(){
+function renderTime(){
+  const v=document.getElementById("view-time");
+  let html=`<div class="box"><h2>⏱ 勉強時間</h2>`;
+  people.forEach(name=>{
+    html+=`<div class="card"><div class="name">${name}</div><div class="time">${todayData[name]}分</div><div class="btns">
+      <button onclick="window.add('${name}',5)">+5</button><button onclick="window.add('${name}',10)">+10</button><button onclick="window.add('${name}',15)">+15</button><button onclick="window.add('${name}',30)">+30</button><button onclick="window.add('${name}',60)">+60</button>
+    </div></div>`;
+  });
+  html+=`</div><div class="box"><button class="wide danger" onclick="window.undoLast()">最後の操作を取り消す</button>
+  <button class="wide subbtn" onclick="window.exportDailyCSV()">日別CSV</button>
+  <button class="wide subbtn" onclick="window.exportHistoryCSV()">履歴CSV</button>
+  <button class="wide subbtn" onclick="window.logout()">ログアウト</button></div>
+  <div class="box"><h2>📝 最近の履歴</h2>${historyRecords.length?historyRecords.map(h=>`<div class="histLine">${h.datetime||h.date}　${h.name}　+${h.minutes}分</div>`).join(""):`<div class="small">まだ履歴がありません</div>`}</div>`;
+  v.innerHTML=html;
+}
+
+function renderRank(){
+  const v=document.getElementById("view-rank");
+  const todayRank=[...people].sort((a,b)=>todayData[b]-todayData[a]);
+  const totalRank=[...people].sort((a,b)=>totalData[b]-totalData[a]);
+  v.innerHTML=`<div class="box"><h2>🏆 今日ランキング</h2>${todayRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${todayData[n]}分</div>`).join("")}</div>
+  <div class="box"><h2>🏅 累計ランキング</h2>${totalRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${totalData[n]}分</div>`).join("")}</div>
+  ${graphHtml()}`;
+}
+
+function graphHtml(){
   const days=lastDays(7);
   const vals=days.map(date=>({date,value:dailyRecords.filter(r=>r.date===date).reduce((s,r)=>s+r.time,0)}));
   const max=Math.max(...vals.map(x=>x.value),1);
-  document.getElementById("graphBox").innerHTML="<h2>📈 7日間グラフ</h2>"+
-    `<div class="graph">${vals.map(x=>`<div class="bar" style="height:${Math.max(4,x.value/max*120)}px"></div>`).join("")}</div>`+
-    `<div class="graphLabel">${vals.map(x=>`<span>${x.date.slice(5)}</span>`).join("")}</div><div class="small">家族合計の勉強時間です</div>`;
-}
-
-function renderHistory(){
-  document.getElementById("historyBox").innerHTML="<h2>📝 最近の履歴</h2>"+
-    (historyRecords.length?historyRecords.map(h=>`<div class="histLine">${h.datetime||h.date}　${h.name}　+${h.minutes}分</div>`).join(""):`<div class="small">まだ履歴がありません</div>`);
+  return `<div class="box"><h2>📈 勉強時間グラフ</h2><div class="graph">${vals.map(x=>`<div class="bar" style="height:${Math.max(4,x.value/max*120)}px"></div>`).join("")}</div><div class="graphLabel">${vals.map(x=>`<span>${x.date.slice(5)}</span>`).join("")}</div><div class="small">家族合計の7日間推移です</div></div>`;
 }
 
 window.exportDailyCSV=function(){
-  let csv="日付,名前,勉強時間\n"; dailyRecords.forEach(r=>csv+=`${r.date},${r.name},${r.time}\n`);
-  downloadCSV(csv,`studyquest_daily_${todayKey()}.csv`);
+  let csv="日付,名前,勉強時間\n";dailyRecords.forEach(r=>csv+=`${r.date},${r.name},${r.time}\n`);downloadCSV(csv,`studyquest_daily_${todayKey()}.csv`);
 };
 window.exportHistoryCSV=async function(){
-  const snap=await getDocs(collection(db,"studyHistory")); let rows=[];
-  snap.forEach(d=>rows.push(d.data())); rows.sort((a,b)=>Number(a.createdAtMs||0)-Number(b.createdAtMs||0));
-  let csv="日時,日付,名前,追加時間,入力者\n"; rows.forEach(r=>csv+=`${r.datetime||""},${r.date||""},${r.name||""},${r.minutes||0},${r.userEmail||""}\n`);
-  downloadCSV(csv,`studyquest_history_${todayKey()}.csv`);
+  const snap=await getDocs(collection(db,"studyHistory"));let rows=[];snap.forEach(d=>rows.push(d.data()));rows.sort((a,b)=>Number(a.createdAtMs||0)-Number(b.createdAtMs||0));
+  let csv="日時,日付,名前,追加時間,入力者\n";rows.forEach(r=>csv+=`${r.datetime||""},${r.date||""},${r.name||""},${r.minutes||0},${r.userEmail||""}\n`);downloadCSV(csv,`studyquest_history_${todayKey()}.csv`);
 };
 function downloadCSV(csv,filename){
-  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
-  const url=URL.createObjectURL(blob); const a=document.createElement("a");
-  a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
 }
 </script>
 </body>
