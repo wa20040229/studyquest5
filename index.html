@@ -3,30 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Study Quest 5</title>
-
+<title>Study Quest 5.1</title>
 <style>
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#0f172a,#1e1b4b);color:white;padding:18px}
-h1{text-align:center;font-size:32px;margin:10px 0}.subtitle{text-align:center;color:#c7d2fe;margin-bottom:18px}
+h1{text-align:center;font-size:32px}.subtitle{text-align:center;color:#c7d2fe;margin-bottom:18px}
 .card,.box{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:18px;margin-bottom:16px;border-radius:22px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .name{font-size:24px;font-weight:800}.time{font-size:42px;font-weight:900;margin:12px 0;color:#a5f3fc}
 .btns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 button,input{border:none;border-radius:16px;padding:14px;font-size:16px;font-weight:800}
 button{color:white;background:linear-gradient(135deg,#6366f1,#06b6d4)}
-input{width:100%;box-sizing:border-box;margin:8px 0}.wide{width:100%;margin-top:10px}
-.danger{background:linear-gradient(135deg,#ef4444,#f97316)}.subbtn{background:rgba(255,255,255,.18)}
+input{width:100%;box-sizing:border-box;margin:8px 0}
+.wide{width:100%;margin-top:10px}.danger{background:linear-gradient(135deg,#ef4444,#f97316)}.subbtn{background:rgba(255,255,255,.18)}
 .rankLine,.histLine{font-size:18px;font-weight:700;padding:7px 0}.hidden{display:none}
-#error{color:#fecaca;font-weight:800;margin-top:12px}.small{color:#c7d2fe;font-size:13px}
+#error,#appError{color:#fecaca;font-weight:800;margin-top:12px;white-space:pre-wrap}
+.small{color:#c7d2fe;font-size:13px}
 .graph{display:flex;align-items:end;gap:6px;height:130px;margin-top:12px}
 .bar{flex:1;background:linear-gradient(180deg,#22d3ee,#6366f1);border-radius:8px 8px 0 0;min-height:4px}
 .graphLabel{display:flex;gap:6px}.graphLabel span{flex:1;text-align:center;font-size:11px;color:#c7d2fe}
 </style>
 </head>
-
 <body>
 
-<h1>Study Quest 5</h1>
-<div class="subtitle">日別保存・履歴・CSV・グラフ対応</div>
+<h1>Study Quest 5.1</h1>
+<div class="subtitle">安定版：日別保存・履歴・CSV・グラフ</div>
 
 <div id="login" class="box">
   <h2>ログイン</h2>
@@ -39,9 +38,8 @@ input{width:100%;box-sizing:border-box;margin:8px 0}.wide{width:100%;margin-top:
 <div id="main" class="hidden">
   <div id="userInfo" class="subtitle"></div>
   <div id="todayTitle" class="subtitle"></div>
-
+  <div id="appError"></div>
   <div id="app"></div>
-
   <div id="ranking" class="box"></div>
   <div id="totalBox" class="box"></div>
   <div id="graphBox" class="box"></div>
@@ -59,10 +57,11 @@ input{width:100%;box-sizing:border-box;margin:8px 0}.wide{width:100%;margin-top:
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, setDoc, collection, onSnapshot,
-  increment, serverTimestamp, addDoc, deleteDoc, query, orderBy, limit, getDocs
+  increment, addDoc, deleteDoc, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged,
+  signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -94,17 +93,12 @@ let unsubHistory = null;
 let currentUser = null;
 
 function todayKey(){
-  const parts = new Intl.DateTimeFormat("ja-JP",{
-    timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"
-  }).formatToParts(new Date());
+  const parts = new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
   return `${parts.find(p=>p.type==="year").value}-${parts.find(p=>p.type==="month").value}-${parts.find(p=>p.type==="day").value}`;
 }
 
 function nowText(){
-  return new Intl.DateTimeFormat("ja-JP",{
-    timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",
-    hour:"2-digit",minute:"2-digit",second:"2-digit"
-  }).format(new Date());
+  return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date());
 }
 
 function lastDays(n){
@@ -112,16 +106,20 @@ function lastDays(n){
   for(let i=n-1;i>=0;i--){
     const d=new Date();
     d.setDate(d.getDate()-i);
-    const parts=new Intl.DateTimeFormat("ja-JP",{
-      timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"
-    }).formatToParts(d);
+    const parts=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
     arr.push(`${parts.find(p=>p.type==="year").value}-${parts.find(p=>p.type==="month").value}-${parts.find(p=>p.type==="day").value}`);
   }
   return arr;
 }
 
+function showAppError(e){
+  document.getElementById("appError").textContent =
+    "Firebaseエラー: " + (e.message || e);
+}
+
 window.login = async function(){
   try{
+    document.getElementById("error").textContent="";
     const email=document.getElementById("email").value.trim();
     const password=document.getElementById("password").value;
     await signInWithEmailAndPassword(auth,email,password);
@@ -136,13 +134,17 @@ window.logout = async function(){
   await signOut(auth);
 };
 
+await setPersistence(auth,browserLocalPersistence);
+
 onAuthStateChanged(auth,user=>{
   if(!user){showLogin();return;}
+
   if(!allowedEmails.includes(user.email)){
     showLogin("このアカウントは利用できません：" + user.email);
     signOut(auth);
     return;
   }
+
   currentUser=user;
   showMain(user);
   startRealtime();
@@ -161,51 +163,46 @@ function showMain(user){
   document.getElementById("todayTitle").textContent="今日：" + todayKey();
 }
 
-async function add(name,min){
-  const date=todayKey();
-  const id=`${date}_${name}`;
+window.add = async function(name,min){
+  try{
+    const date=todayKey();
+    await setDoc(doc(db,"dailyStudy",`${date}_${name}`),{
+      date:date,
+      name:name,
+      time:increment(min),
+      updatedAtMs:Date.now()
+    },{merge:true});
 
-  await setDoc(doc(db,"dailyStudy",id),{
-    date:date,
-    name:name,
-    time:increment(min),
-    updatedAt:serverTimestamp()
-  },{merge:true});
-
-  await addDoc(collection(db,"studyHistory"),{
-    date:date,
-    datetime:nowText(),
-    name:name,
-    minutes:min,
-    userEmail:currentUser.email,
-    createdAt:serverTimestamp()
-  });
-}
-
-window.add=add;
+    await addDoc(collection(db,"studyHistory"),{
+      date:date,
+      datetime:nowText(),
+      name:name,
+      minutes:min,
+      userEmail:currentUser.email,
+      createdAtMs:Date.now()
+    });
+  }catch(e){showAppError(e);}
+};
 
 window.undoLast = async function(){
-  if(!confirm("最後の操作を取り消しますか？")) return;
+  try{
+    if(!historyRecords.length){alert("取り消す履歴がありません");return;}
+    if(!confirm("最後の操作を取り消しますか？")) return;
 
-  const q=query(collection(db,"studyHistory"),orderBy("createdAt","desc"),limit(1));
-  const snap=await getDocs(q);
+    const h = historyRecords[0];
+    const key = `${h.date}_${h.name}`;
+    const current = dailyRecords.find(r=>r.date===h.date && r.name===h.name);
+    const newTime = Math.max(0, Number((current && current.time) || 0) - Number(h.minutes || 0));
 
-  if(snap.empty){
-    alert("取り消す履歴がありません");
-    return;
-  }
+    await setDoc(doc(db,"dailyStudy",key),{
+      date:h.date,
+      name:h.name,
+      time:newTime,
+      updatedAtMs:Date.now()
+    },{merge:true});
 
-  const target=snap.docs[0];
-  const d=target.data();
-
-  await setDoc(doc(db,"dailyStudy",`${d.date}_${d.name}`),{
-    date:d.date,
-    name:d.name,
-    time:increment(-Number(d.minutes||0)),
-    updatedAt:serverTimestamp()
-  },{merge:true});
-
-  await deleteDoc(target.ref);
+    await deleteDoc(doc(db,"studyHistory",h.id));
+  }catch(e){showAppError(e);}
 };
 
 function startRealtime(){
@@ -229,16 +226,18 @@ function startRealtime(){
 
     dailyRecords.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
     render();
-  });
+  },showAppError);
 
-  unsubHistory=onSnapshot(query(collection(db,"studyHistory"),orderBy("createdAt","desc"),limit(20)),snap=>{
+  unsubHistory=onSnapshot(collection(db,"studyHistory"),snap=>{
     historyRecords=[];
     snap.forEach(docSnap=>{
       const d=docSnap.data();
       historyRecords.push({id:docSnap.id,...d});
     });
+    historyRecords.sort((a,b)=>Number(b.createdAtMs||0)-Number(a.createdAtMs||0));
+    historyRecords=historyRecords.slice(0,20);
     render();
-  });
+  },showAppError);
 }
 
 function render(){
@@ -257,8 +256,7 @@ function render(){
           <button onclick="window.add('${name}',30)">+30</button>
           <button onclick="window.add('${name}',60)">+60</button>
         </div>
-      </div>
-    `;
+      </div>`;
   });
 
   const todayRank=[...people].sort((a,b)=>todayData[b]-todayData[a]);
@@ -280,9 +278,8 @@ function renderGraph(){
   const dayTotals=days.map(date=>{
     let sum=0;
     dailyRecords.forEach(r=>{if(r.date===date) sum+=r.time;});
-    return {date:date,value:sum};
+    return {date,value:sum};
   });
-
   const max=Math.max(...dayTotals.map(x=>x.value),1);
 
   document.getElementById("graphBox").innerHTML=
@@ -298,7 +295,7 @@ function renderHistory(){
   document.getElementById("historyBox").innerHTML=
     "<h2>📝 最近の履歴</h2>"+
     (historyRecords.length
-      ? historyRecords.map(h=>`<div class="histLine">${h.datetime || h.date}　${h.name}　+${h.minutes}分</div>`).join("")
+      ? historyRecords.map(h=>`<div class="histLine">${h.datetime||h.date}　${h.name}　+${h.minutes}分</div>`).join("")
       : `<div class="small">まだ履歴がありません</div>`);
 }
 
@@ -308,10 +305,17 @@ window.exportDailyCSV=function(){
   downloadCSV(csv,`studyquest_daily_${todayKey()}.csv`);
 };
 
-window.exportHistoryCSV=function(){
-  let csv="日時,日付,名前,追加時間,入力者\n";
-  historyRecords.forEach(r=>{csv+=`${r.datetime||""},${r.date||""},${r.name||""},${r.minutes||0},${r.userEmail||""}\n`;});
-  downloadCSV(csv,`studyquest_history_${todayKey()}.csv`);
+window.exportHistoryCSV=async function(){
+  try{
+    const snap=await getDocs(collection(db,"studyHistory"));
+    let rows=[];
+    snap.forEach(d=>rows.push(d.data()));
+    rows.sort((a,b)=>Number(a.createdAtMs||0)-Number(b.createdAtMs||0));
+
+    let csv="日時,日付,名前,追加時間,入力者\n";
+    rows.forEach(r=>{csv+=`${r.datetime||""},${r.date||""},${r.name||""},${r.minutes||0},${r.userEmail||""}\n`;});
+    downloadCSV(csv,`studyquest_history_${todayKey()}.csv`);
+  }catch(e){showAppError(e);}
 };
 
 function downloadCSV(csv,filename){
@@ -324,6 +328,5 @@ function downloadCSV(csv,filename){
   URL.revokeObjectURL(url);
 }
 </script>
-
 </body>
 </html>
