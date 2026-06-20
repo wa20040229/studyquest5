@@ -3,20 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Study Quest 5.1</title>
+<title>Study Quest 6</title>
 <style>
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#0f172a,#1e1b4b);color:white;padding:18px}
 h1{text-align:center;font-size:32px}.subtitle{text-align:center;color:#c7d2fe;margin-bottom:18px}
 .card,.box{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:18px;margin-bottom:16px;border-radius:22px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .name{font-size:24px;font-weight:800}.time{font-size:42px;font-weight:900;margin:12px 0;color:#a5f3fc}
 .btns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-button,input{border:none;border-radius:16px;padding:14px;font-size:16px;font-weight:800}
+button,input,select{border:none;border-radius:16px;padding:14px;font-size:16px;font-weight:800}
 button{color:white;background:linear-gradient(135deg,#6366f1,#06b6d4)}
-input{width:100%;box-sizing:border-box;margin:8px 0}
+input,select{width:100%;box-sizing:border-box;margin:8px 0}
 .wide{width:100%;margin-top:10px}.danger{background:linear-gradient(135deg,#ef4444,#f97316)}.subbtn{background:rgba(255,255,255,.18)}
 .rankLine,.histLine{font-size:18px;font-weight:700;padding:7px 0}.hidden{display:none}
 #error,#appError{color:#fecaca;font-weight:800;margin-top:12px;white-space:pre-wrap}
-.small{color:#c7d2fe;font-size:13px}
+.small{color:#c7d2fe;font-size:13px}.progressOuter{height:14px;background:rgba(255,255,255,.2);border-radius:999px;overflow:hidden;margin:10px 0}
+.progressInner{height:100%;background:linear-gradient(90deg,#22d3ee,#a78bfa)}
 .graph{display:flex;align-items:end;gap:6px;height:130px;margin-top:12px}
 .bar{flex:1;background:linear-gradient(180deg,#22d3ee,#6366f1);border-radius:8px 8px 0 0;min-height:4px}
 .graphLabel{display:flex;gap:6px}.graphLabel span{flex:1;text-align:center;font-size:11px;color:#c7d2fe}
@@ -24,8 +25,8 @@ input{width:100%;box-sizing:border-box;margin:8px 0}
 </head>
 <body>
 
-<h1>Study Quest 5.1</h1>
-<div class="subtitle">安定版：日別保存・履歴・CSV・グラフ</div>
+<h1>Study Quest 6</h1>
+<div class="subtitle">教材別・期末試験モード</div>
 
 <div id="login" class="box">
   <h2>ログイン</h2>
@@ -39,7 +40,23 @@ input{width:100%;box-sizing:border-box;margin:8px 0}
   <div id="userInfo" class="subtitle"></div>
   <div id="todayTitle" class="subtitle"></div>
   <div id="appError"></div>
+
   <div id="app"></div>
+
+  <div id="examBox" class="box">
+    <h2>📚 期末試験モード</h2>
+    <select id="matPerson">
+      <option value="みく">みく</option>
+      <option value="けいと">けいと</option>
+      <option value="なおこ">なおこ</option>
+    </select>
+    <input id="matName" placeholder="教材名 例：数学ワーク / 英語プリント">
+    <input id="matTotal" type="number" placeholder="全部で何ページ・何問？ 例：80">
+    <input id="matDate" type="date">
+    <button class="wide" onclick="window.addMaterial()">教材を追加</button>
+    <div id="materials"></div>
+  </div>
+
   <div id="ranking" class="box"></div>
   <div id="totalBox" class="box"></div>
   <div id="graphBox" class="box"></div>
@@ -73,64 +90,49 @@ const firebaseConfig = {
   appId: "1:497085827292:web:f4085fd6190eb853150c19"
 };
 
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
-const auth = getAuth(firebaseApp);
+const firebaseApp=initializeApp(firebaseConfig);
+const db=getFirestore(firebaseApp);
+const auth=getAuth(firebaseApp);
 
-const allowedEmails = [
+const allowedEmails=[
   "wata20040229@gmail.com",
   "wawawawayanakemi@gmail.com",
   "ke.2009.mi.2013@gmail.com"
 ];
 
-const people = ["みく","けいと","なおこ"];
-let todayData = {みく:0,けいと:0,なおこ:0};
-let totalData = {みく:0,けいと:0,なおこ:0};
-let dailyRecords = [];
-let historyRecords = [];
-let unsubDaily = null;
-let unsubHistory = null;
-let currentUser = null;
+const people=["みく","けいと","なおこ"];
+let todayData={みく:0,けいと:0,なおこ:0};
+let totalData={みく:0,けいと:0,なおこ:0};
+let dailyRecords=[],historyRecords=[],materials=[];
+let unsubDaily=null,unsubHistory=null,unsubMaterials=null,currentUser=null;
 
 function todayKey(){
-  const parts = new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
-  return `${parts.find(p=>p.type==="year").value}-${parts.find(p=>p.type==="month").value}-${parts.find(p=>p.type==="day").value}`;
+  const p=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+  return `${p.find(x=>x.type==="year").value}-${p.find(x=>x.type==="month").value}-${p.find(x=>x.type==="day").value}`;
 }
-
 function nowText(){
   return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date());
 }
-
 function lastDays(n){
   const arr=[];
   for(let i=n-1;i>=0;i--){
-    const d=new Date();
-    d.setDate(d.getDate()-i);
-    const parts=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
-    arr.push(`${parts.find(p=>p.type==="year").value}-${parts.find(p=>p.type==="month").value}-${parts.find(p=>p.type==="day").value}`);
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const p=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
+    arr.push(`${p.find(x=>x.type==="year").value}-${p.find(x=>x.type==="month").value}-${p.find(x=>x.type==="day").value}`);
   }
   return arr;
 }
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
+function showAppError(e){document.getElementById("appError").textContent="Firebaseエラー: "+(e.message||e);}
 
-function showAppError(e){
-  document.getElementById("appError").textContent =
-    "Firebaseエラー: " + (e.message || e);
-}
-
-window.login = async function(){
+window.login=async function(){
   try{
     document.getElementById("error").textContent="";
-    const email=document.getElementById("email").value.trim();
-    const password=document.getElementById("password").value;
-    await signInWithEmailAndPassword(auth,email,password);
-  }catch(e){
-    document.getElementById("error").textContent=e.message;
-  }
+    await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("password").value);
+  }catch(e){document.getElementById("error").textContent=e.message;}
 };
-
-window.logout = async function(){
-  if(unsubDaily) unsubDaily();
-  if(unsubHistory) unsubHistory();
+window.logout=async function(){
+  if(unsubDaily)unsubDaily(); if(unsubHistory)unsubHistory(); if(unsubMaterials)unsubMaterials();
   await signOut(auth);
 };
 
@@ -138,16 +140,11 @@ await setPersistence(auth,browserLocalPersistence);
 
 onAuthStateChanged(auth,user=>{
   if(!user){showLogin();return;}
-
   if(!allowedEmails.includes(user.email)){
-    showLogin("このアカウントは利用できません：" + user.email);
-    signOut(auth);
-    return;
+    showLogin("このアカウントは利用できません："+user.email);
+    signOut(auth); return;
   }
-
-  currentUser=user;
-  showMain(user);
-  startRealtime();
+  currentUser=user; showMain(user); startRealtime();
 });
 
 function showLogin(msg=""){
@@ -155,95 +152,93 @@ function showLogin(msg=""){
   document.getElementById("main").classList.add("hidden");
   document.getElementById("error").textContent=msg;
 }
-
 function showMain(user){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("main").classList.remove("hidden");
-  document.getElementById("userInfo").textContent="ログイン中：" + user.email;
-  document.getElementById("todayTitle").textContent="今日：" + todayKey();
+  document.getElementById("userInfo").textContent="ログイン中："+user.email;
+  document.getElementById("todayTitle").textContent="今日："+todayKey();
 }
 
-window.add = async function(name,min){
+window.add=async function(name,min){
   try{
     const date=todayKey();
-    await setDoc(doc(db,"dailyStudy",`${date}_${name}`),{
-      date:date,
-      name:name,
-      time:increment(min),
-      updatedAtMs:Date.now()
-    },{merge:true});
-
-    await addDoc(collection(db,"studyHistory"),{
-      date:date,
-      datetime:nowText(),
-      name:name,
-      minutes:min,
-      userEmail:currentUser.email,
-      createdAtMs:Date.now()
-    });
+    await setDoc(doc(db,"dailyStudy",`${date}_${name}`),{date,name,time:increment(min),updatedAtMs:Date.now()},{merge:true});
+    await addDoc(collection(db,"studyHistory"),{date,datetime:nowText(),name,minutes:min,userEmail:currentUser.email,createdAtMs:Date.now()});
   }catch(e){showAppError(e);}
 };
 
-window.undoLast = async function(){
+window.addMaterial=async function(){
+  try{
+    const person=document.getElementById("matPerson").value;
+    const name=document.getElementById("matName").value.trim();
+    const total=Number(document.getElementById("matTotal").value||0);
+    const testDate=document.getElementById("matDate").value;
+    if(!name||!total||!testDate){alert("教材名・総量・試験日を入れてください");return;}
+    await addDoc(collection(db,"examMaterials"),{person,name,total,done:0,testDate,createdAtMs:Date.now(),updatedAtMs:Date.now()});
+    document.getElementById("matName").value="";
+    document.getElementById("matTotal").value="";
+  }catch(e){showAppError(e);}
+};
+
+window.addProgress=async function(id,n){
+  try{
+    const m=materials.find(x=>x.id===id); if(!m)return;
+    const done=Math.min(Number(m.total||0),Number(m.done||0)+n);
+    await setDoc(doc(db,"examMaterials",id),{done,updatedAtMs:Date.now()},{merge:true});
+  }catch(e){showAppError(e);}
+};
+
+window.deleteMaterial=async function(id){
+  if(!confirm("この教材を削除しますか？"))return;
+  await deleteDoc(doc(db,"examMaterials",id));
+};
+
+window.undoLast=async function(){
   try{
     if(!historyRecords.length){alert("取り消す履歴がありません");return;}
-    if(!confirm("最後の操作を取り消しますか？")) return;
-
-    const h = historyRecords[0];
-    const key = `${h.date}_${h.name}`;
-    const current = dailyRecords.find(r=>r.date===h.date && r.name===h.name);
-    const newTime = Math.max(0, Number((current && current.time) || 0) - Number(h.minutes || 0));
-
-    await setDoc(doc(db,"dailyStudy",key),{
-      date:h.date,
-      name:h.name,
-      time:newTime,
-      updatedAtMs:Date.now()
-    },{merge:true});
-
+    if(!confirm("最後の操作を取り消しますか？"))return;
+    const h=historyRecords[0];
+    const cur=dailyRecords.find(r=>r.date===h.date&&r.name===h.name);
+    const newTime=Math.max(0,Number((cur&&cur.time)||0)-Number(h.minutes||0));
+    await setDoc(doc(db,"dailyStudy",`${h.date}_${h.name}`),{date:h.date,name:h.name,time:newTime,updatedAtMs:Date.now()},{merge:true});
     await deleteDoc(doc(db,"studyHistory",h.id));
   }catch(e){showAppError(e);}
 };
 
 function startRealtime(){
-  if(unsubDaily) unsubDaily();
-  if(unsubHistory) unsubHistory();
+  if(unsubDaily)unsubDaily(); if(unsubHistory)unsubHistory(); if(unsubMaterials)unsubMaterials();
 
   unsubDaily=onSnapshot(collection(db,"dailyStudy"),snap=>{
-    todayData={みく:0,けいと:0,なおこ:0};
-    totalData={みく:0,けいと:0,なおこ:0};
-    dailyRecords=[];
+    todayData={みく:0,けいと:0,なおこ:0}; totalData={みく:0,けいと:0,なおこ:0}; dailyRecords=[];
     const today=todayKey();
-
-    snap.forEach(docSnap=>{
-      const d=docSnap.data();
-      if(!people.includes(d.name)) return;
+    snap.forEach(ds=>{
+      const d=ds.data(); if(!people.includes(d.name))return;
       const time=Number(d.time||0);
-      dailyRecords.push({date:d.date,name:d.name,time:time});
-      totalData[d.name]+=time;
-      if(d.date===today) todayData[d.name]+=time;
+      dailyRecords.push({date:d.date,name:d.name,time});
+      totalData[d.name]+=time; if(d.date===today)todayData[d.name]+=time;
     });
-
     dailyRecords.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
     render();
   },showAppError);
 
   unsubHistory=onSnapshot(collection(db,"studyHistory"),snap=>{
     historyRecords=[];
-    snap.forEach(docSnap=>{
-      const d=docSnap.data();
-      historyRecords.push({id:docSnap.id,...d});
-    });
+    snap.forEach(ds=>historyRecords.push({id:ds.id,...ds.data()}));
     historyRecords.sort((a,b)=>Number(b.createdAtMs||0)-Number(a.createdAtMs||0));
     historyRecords=historyRecords.slice(0,20);
+    render();
+  },showAppError);
+
+  unsubMaterials=onSnapshot(collection(db,"examMaterials"),snap=>{
+    materials=[];
+    snap.forEach(ds=>materials.push({id:ds.id,...ds.data()}));
+    materials.sort((a,b)=>(a.testDate||"").localeCompare(b.testDate||"")||(a.person||"").localeCompare(b.person||""));
     render();
   },showAppError);
 }
 
 function render(){
-  const appDiv=document.getElementById("app");
-  appDiv.innerHTML="";
-
+  const appDiv=document.getElementById("app"); appDiv.innerHTML="";
   people.forEach(name=>{
     appDiv.innerHTML+=`
       <div class="card">
@@ -259,73 +254,64 @@ function render(){
       </div>`;
   });
 
-  const todayRank=[...people].sort((a,b)=>todayData[b]-todayData[a]);
-  document.getElementById("ranking").innerHTML=
-    "<h2>🏆 今日のランキング</h2>"+
-    todayRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${todayData[n]}分</div>`).join("");
+  document.getElementById("ranking").innerHTML="<h2>🏆 今日のランキング</h2>"+[...people].sort((a,b)=>todayData[b]-todayData[a]).map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${todayData[n]}分</div>`).join("");
+  document.getElementById("totalBox").innerHTML="<h2>🏅 累計ランキング</h2>"+[...people].sort((a,b)=>totalData[b]-totalData[a]).map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${totalData[n]}分</div>`).join("");
+  renderMaterials(); renderGraph(); renderHistory();
+}
 
-  const totalRank=[...people].sort((a,b)=>totalData[b]-totalData[a]);
-  document.getElementById("totalBox").innerHTML=
-    "<h2>🏅 累計ランキング</h2>"+
-    totalRank.map((n,i)=>`<div class="rankLine">${i+1}位 ${n}　${totalData[n]}分</div>`).join("");
-
-  renderGraph();
-  renderHistory();
+function renderMaterials(){
+  const box=document.getElementById("materials");
+  if(!materials.length){box.innerHTML=`<div class="small">まだ教材がありません</div>`;return;}
+  box.innerHTML=materials.map(m=>{
+    const total=Number(m.total||0),done=Number(m.done||0),remain=Math.max(0,total-done);
+    const days=Math.max(1,Math.ceil((new Date(m.testDate+"T00:00:00")-new Date())/86400000));
+    const perDay=Math.ceil(remain/days);
+    const pct=total?Math.round(done/total*100):0;
+    return `
+      <div class="card">
+        <div class="name">${esc(m.person)}：${esc(m.name)}</div>
+        <div class="small">試験日：${esc(m.testDate)} / 残り${days}日 / 1日 ${perDay} ずつ</div>
+        <div class="progressOuter"><div class="progressInner" style="width:${Math.min(100,pct)}%"></div></div>
+        <div class="rankLine">${done} / ${total}（残り ${remain}）</div>
+        <div class="btns">
+          <button onclick="window.addProgress('${m.id}',1)">+1</button>
+          <button onclick="window.addProgress('${m.id}',5)">+5</button>
+          <button onclick="window.addProgress('${m.id}',10)">+10</button>
+          <button onclick="window.addProgress('${m.id}',20)">+20</button>
+          <button onclick="window.deleteMaterial('${m.id}')">削除</button>
+        </div>
+      </div>`;
+  }).join("");
 }
 
 function renderGraph(){
   const days=lastDays(7);
-  const dayTotals=days.map(date=>{
-    let sum=0;
-    dailyRecords.forEach(r=>{if(r.date===date) sum+=r.time;});
-    return {date,value:sum};
-  });
-  const max=Math.max(...dayTotals.map(x=>x.value),1);
-
-  document.getElementById("graphBox").innerHTML=
-    "<h2>📈 7日間グラフ</h2>"+
-    `<div class="graph">`+
-    dayTotals.map(x=>`<div class="bar" style="height:${Math.max(4,(x.value/max)*120)}px" title="${x.date} ${x.value}分"></div>`).join("")+
-    `</div><div class="graphLabel">`+
-    dayTotals.map(x=>`<span>${x.date.slice(5)}</span>`).join("")+
-    `</div><div class="small">家族合計の勉強時間です</div>`;
+  const vals=days.map(date=>({date,value:dailyRecords.filter(r=>r.date===date).reduce((s,r)=>s+r.time,0)}));
+  const max=Math.max(...vals.map(x=>x.value),1);
+  document.getElementById("graphBox").innerHTML="<h2>📈 7日間グラフ</h2>"+
+    `<div class="graph">${vals.map(x=>`<div class="bar" style="height:${Math.max(4,x.value/max*120)}px"></div>`).join("")}</div>`+
+    `<div class="graphLabel">${vals.map(x=>`<span>${x.date.slice(5)}</span>`).join("")}</div><div class="small">家族合計の勉強時間です</div>`;
 }
 
 function renderHistory(){
-  document.getElementById("historyBox").innerHTML=
-    "<h2>📝 最近の履歴</h2>"+
-    (historyRecords.length
-      ? historyRecords.map(h=>`<div class="histLine">${h.datetime||h.date}　${h.name}　+${h.minutes}分</div>`).join("")
-      : `<div class="small">まだ履歴がありません</div>`);
+  document.getElementById("historyBox").innerHTML="<h2>📝 最近の履歴</h2>"+
+    (historyRecords.length?historyRecords.map(h=>`<div class="histLine">${h.datetime||h.date}　${h.name}　+${h.minutes}分</div>`).join(""):`<div class="small">まだ履歴がありません</div>`);
 }
 
 window.exportDailyCSV=function(){
-  let csv="日付,名前,勉強時間\n";
-  dailyRecords.forEach(r=>{csv+=`${r.date},${r.name},${r.time}\n`;});
+  let csv="日付,名前,勉強時間\n"; dailyRecords.forEach(r=>csv+=`${r.date},${r.name},${r.time}\n`);
   downloadCSV(csv,`studyquest_daily_${todayKey()}.csv`);
 };
-
 window.exportHistoryCSV=async function(){
-  try{
-    const snap=await getDocs(collection(db,"studyHistory"));
-    let rows=[];
-    snap.forEach(d=>rows.push(d.data()));
-    rows.sort((a,b)=>Number(a.createdAtMs||0)-Number(b.createdAtMs||0));
-
-    let csv="日時,日付,名前,追加時間,入力者\n";
-    rows.forEach(r=>{csv+=`${r.datetime||""},${r.date||""},${r.name||""},${r.minutes||0},${r.userEmail||""}\n`;});
-    downloadCSV(csv,`studyquest_history_${todayKey()}.csv`);
-  }catch(e){showAppError(e);}
+  const snap=await getDocs(collection(db,"studyHistory")); let rows=[];
+  snap.forEach(d=>rows.push(d.data())); rows.sort((a,b)=>Number(a.createdAtMs||0)-Number(b.createdAtMs||0));
+  let csv="日時,日付,名前,追加時間,入力者\n"; rows.forEach(r=>csv+=`${r.datetime||""},${r.date||""},${r.name||""},${r.minutes||0},${r.userEmail||""}\n`);
+  downloadCSV(csv,`studyquest_history_${todayKey()}.csv`);
 };
-
 function downloadCSV(csv,filename){
   const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download=filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
 }
 </script>
 </body>
