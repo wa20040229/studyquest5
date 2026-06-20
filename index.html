@@ -15,7 +15,7 @@ body{
 }
 
 h1{
-  margin:8px 0 18px;
+  margin:8px 0 10px;
   text-align:center;
   font-size:32px;
 }
@@ -26,7 +26,7 @@ h1{
   margin-bottom:18px;
 }
 
-.card{
+.card,.loginBox,#ranking{
   background:rgba(255,255,255,0.12);
   backdrop-filter:blur(12px);
   border:1px solid rgba(255,255,255,0.18);
@@ -50,15 +50,15 @@ h1{
 
 .btns{
   display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:10px;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
 }
 
 button{
   border:none;
   border-radius:16px;
   padding:14px 0;
-  font-size:18px;
+  font-size:16px;
   font-weight:800;
   color:white;
   background:linear-gradient(135deg,#6366f1,#06b6d4);
@@ -68,21 +68,32 @@ button:active{
   transform:scale(.96);
 }
 
-#ranking{
-  background:rgba(255,255,255,0.14);
-  padding:18px;
-  border-radius:22px;
-  margin-top:22px;
+.loginBtn{
+  width:100%;
+  margin-top:12px;
+  font-size:18px;
 }
 
-#ranking h2{
-  margin-top:0;
+.logoutBtn{
+  background:rgba(255,255,255,.18);
+  margin-top:10px;
+  width:100%;
 }
 
 .rankLine{
   font-size:20px;
   font-weight:700;
   padding:8px 0;
+}
+
+.hidden{
+  display:none;
+}
+
+#error{
+  color:#fecaca;
+  font-weight:800;
+  margin-top:12px;
 }
 </style>
 </head>
@@ -92,8 +103,19 @@ button:active{
 <h1>Study Quest 5</h1>
 <div class="subtitle">家族リアルタイム勉強ランキング</div>
 
-<div id="app"></div>
-<div id="ranking"></div>
+<div id="login" class="loginBox">
+  <h2>ログインしてください</h2>
+  <p>家族3人だけが使えます。</p>
+  <button class="loginBtn" onclick="window.login()">Googleでログイン</button>
+  <div id="error"></div>
+</div>
+
+<div id="main" class="hidden">
+  <div id="userInfo" class="subtitle"></div>
+  <div id="app"></div>
+  <div id="ranking"></div>
+  <button class="logoutBtn" onclick="window.logout()">ログアウト</button>
+</div>
 
 <script type="module">
 
@@ -106,8 +128,16 @@ import {
   setDoc, 
   collection, 
   onSnapshot 
-} 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",
@@ -118,11 +148,62 @@ const firebaseConfig = {
   appId: "1:497085827292:web:f4085fd6190eb853150c19"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const auth = getAuth(firebaseApp);
+const provider = new GoogleAuthProvider();
+
+const allowedEmails = [
+  "wata20040229@gmail.com",
+  "wawawawayanakemi@gmail.com",
+  "ke.2009.mi.2013@gmail.com"
+];
 
 const people = ["みく","けいと","なおこ"];
 let data = {みく:0, けいと:0, なおこ:0};
+let unsubscribe = null;
+
+window.login = async function(){
+  await signInWithRedirect(auth, provider);
+};
+
+window.logout = async function(){
+  if(unsubscribe) unsubscribe();
+  await signOut(auth);
+};
+
+getRedirectResult(auth).catch(err=>{
+  document.getElementById("error").textContent = err.message;
+});
+
+onAuthStateChanged(auth, user=>{
+
+  if(!user){
+    showLogin();
+    return;
+  }
+
+  if(!allowedEmails.includes(user.email)){
+    showLogin("このGoogleアカウントは利用できません：" + user.email);
+    signOut(auth);
+    return;
+  }
+
+  showMain(user);
+  startRealtime();
+});
+
+function showLogin(msg=""){
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("main").classList.add("hidden");
+  document.getElementById("error").textContent = msg;
+}
+
+function showMain(user){
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("main").classList.remove("hidden");
+  document.getElementById("userInfo").textContent = "ログイン中：" + user.email;
+}
 
 function render(){
 
@@ -135,7 +216,9 @@ function render(){
         <div class="name">${name}</div>
         <div class="time">${data[name]}分</div>
         <div class="btns">
+          <button onclick="window.add('${name}',5)">+5</button>
           <button onclick="window.add('${name}',10)">+10</button>
+          <button onclick="window.add('${name}',15)">+15</button>
           <button onclick="window.add('${name}',30)">+30</button>
           <button onclick="window.add('${name}',60)">+60</button>
         </div>
@@ -160,7 +243,10 @@ async function add(name,min){
 }
 
 function startRealtime(){
-  onSnapshot(collection(db,"study"),(snap)=>{
+
+  if(unsubscribe) unsubscribe();
+
+  unsubscribe = onSnapshot(collection(db,"study"), snap=>{
     snap.docChanges().forEach(change=>{
       const d = change.doc.data();
       data[change.doc.id] = d.time || 0;
@@ -170,7 +256,6 @@ function startRealtime(){
 }
 
 window.add = add;
-startRealtime();
 
 </script>
 
