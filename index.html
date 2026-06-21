@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StudyQuest Ver8.7</title>
+<title>StudyQuest Ver8.8</title>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -339,7 +339,7 @@ textarea{resize:vertical}
 
 <body>
 <header>
-  <h1>StudyQuest Ver8.7</h1>
+  <h1>StudyQuest Ver8.8</h1>
   <p>今日やること・教材管理・教科別グラフ・カレンダー</p>
 </header>
 
@@ -414,8 +414,16 @@ textarea{resize:vertical}
     <h2>勉強記録</h2>
 
     <h3>教材から入力</h3>
+
+    <label>表示する名前</label>
+    <select id="recordPersonFilter" onchange="refreshMaterialSelect()"></select>
+
+    <label>表示する教科</label>
+    <select id="recordSubjectFilter" onchange="refreshMaterialSelect()"></select>
+
     <label>教材</label>
     <select id="recordMaterial"></select>
+    <p class="small" id="recordMaterialHelp"></p>
 
     <label>勉強時間（分）</label>
     <input type="number" id="materialMinutes" min="1">
@@ -602,6 +610,8 @@ function fillSelect(id,items){
 function initForms(){
   ["quickPerson","materialPerson"].forEach(id=>fillSelect(id,PEOPLE));
   ["quickSubject","materialSubject"].forEach(id=>fillSelect(id,SUBJECTS));
+  fillSelect("recordPersonFilter",["全員",...PEOPLE]);
+  fillSelect("recordSubjectFilter",["全教科",...SUBJECTS]);
   document.getElementById("quickDate").value=todayStr();
   document.getElementById("materialRecordDate").value=todayStr();
   document.getElementById("materialStart").value=todayStr();
@@ -621,13 +631,35 @@ function filterByPerson(list,key){return list.filter(x=>personOk(x.person,key))}
 
 function refreshMaterialSelect(){
   const el=document.getElementById("recordMaterial");
+  const help=document.getElementById("recordMaterialHelp");
+  if(!el)return;
+
+  const personFilter=document.getElementById("recordPersonFilter")?.value || "全員";
+  const subjectFilter=document.getElementById("recordSubjectFilter")?.value || "全教科";
+
+  const list=state.materials.filter(m=>{
+    const okPerson=personFilter==="全員" || m.person===personFilter;
+    const okSubject=subjectFilter==="全教科" || m.subject===subjectFilter;
+    return okPerson && okSubject;
+  });
+
   el.innerHTML="";
-  state.materials.forEach(m=>{
+  list.forEach(m=>{
     const op=document.createElement("option");
     op.value=m.id;
     op.textContent=`${m.person}｜${m.subject}｜${m.name}`;
     el.appendChild(op);
   });
+
+  if(help){
+    if(state.materials.length===0){
+      help.textContent="教材がまだ登録されていません。先に「教材管理」で教材を登録してください。";
+    }else if(list.length===0){
+      help.textContent="この条件に合う教材がありません。名前・教科を「全員」「全教科」に戻すと確認できます。";
+    }else{
+      help.textContent=`${list.length}件の教材から選択できます。`;
+    }
+  }
 }
 function clearMaterialForm(){
   document.getElementById("materialName").value="";
