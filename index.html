@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StudyQuest Ver9.2 Firebase</title>
+<title>StudyQuest Ver9.0</title>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -383,19 +383,6 @@ input[type="file"]{
   border:1px dashed #475569;
 }
 
-
-.hidden{display:none!important}
-.login-box{
-  max-width:420px;
-  margin:24px auto;
-}
-.login-user{
-  text-align:center;
-  color:#cbd5e1;
-  margin:8px 0 14px;
-  font-size:13px;
-}
-
 @media(max-width:700px){
   header h1{font-size:23px}
   .container{padding:10px}
@@ -413,25 +400,12 @@ input[type="file"]{
 </head>
 
 <body>
-
-<div id="loginBox" class="box login-box">
-  <h2>ログイン</h2>
-  <input id="email" type="email" placeholder="メールアドレス">
-  <input id="password" type="password" placeholder="パスワード">
-  <button onclick="window.login()">ログイン</button>
-  <div id="loginError" class="small"></div>
-</div>
-
-<div id="appRoot" class="hidden">
 <header>
-  <h1>StudyQuest Ver9.2 Firebase</h1>
+  <h1>StudyQuest Ver9.0</h1>
   <p>今日やること・教材管理・教科別グラフ・カレンダー</p>
 </header>
 
 <div class="container">
-  <div id="userInfo" class="login-user"></div>
-  <button class="btn-gray" onclick="window.logout()">ログアウト</button>
-
 
 <div class="main-tabs">
   <button class="active" onclick="showTab('todayTab',this)">今日やること</button>
@@ -636,31 +610,7 @@ input[type="file"]{
 
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-const firebaseConfig={
-  apiKey:"AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",
-  authDomain:"studycount-wata.firebaseapp.com",
-  projectId:"studycount-wata",
-  storageBucket:"studycount-wata.firebasestorage.app",
-  messagingSenderId:"497085827292",
-  appId:"1:497085827292:web:f4085fd6190eb853150c19"
-};
-
-const firebaseApp=initializeApp(firebaseConfig);
-const db=getFirestore(firebaseApp);
-const auth=getAuth(firebaseApp);
-const allowedEmails=["wata20040229@gmail.com","wawawawayanakemi@gmail.com","ke.2009.mi.2013@gmail.com"];
-const CLOUD_DOC=doc(db,"studyQuestV9","sharedData");
-let currentUser=null;
-let unsubCloud=null;
-let isApplyingCloud=false;
-let firebaseReady=false;
-
-
+<script>
 const SUBJECTS=["国語","数学","英語","理科","社会","その他"];
 const PEOPLE=["けいと","みく","尚子"];
 const STORAGE_KEY="studyquest_v8_data";
@@ -719,8 +669,7 @@ function load(){
     date:r.date||todayStr(),
     memo:r.memo||"",
     materialId:r.materialId||null,
-    materialName:r.materialName||r.material||"時間だけ入力",
-    completedPlanKey:r.completedPlanKey||""
+    materialName:r.materialName||r.material||"時間だけ入力"
   }));
 
   state.materials=(state.materials||[]).map(m=>({
@@ -736,22 +685,9 @@ function load(){
     exam:m.exam||m.examDate||m.end||todayStr()
   }));
 
+  save();
 }
-async function save(){
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
-  if(firebaseReady && currentUser && !isApplyingCloud){
-    try{
-      await setDoc(CLOUD_DOC,{
-        records:state.records||[],
-        materials:state.materials||[],
-        updatedAtMs:Date.now(),
-        updatedAt:serverTimestamp()
-      },{merge:true});
-    }catch(e){
-      alert("Firebase保存エラー: "+(e.message||e));
-    }
-  }
-}
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
 function showTab(id,btn){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   document.getElementById(id).classList.add("active");
@@ -1032,37 +968,22 @@ function renderRainbowRanking(){
   document.getElementById("rainbowRanking").innerHTML=html;
 }
 
-function completedPlanKey(materialId,dateStr,from,to){
-  return `${materialId}_${dateStr}_${from}_${to}`;
-}
-
 function isPlanCompleted(plan){
-  const key=completedPlanKey(plan.materialId,plan.date,plan.from,plan.to);
   return state.records.some(r=>
-    r.completedPlanKey===key ||
-    (
-      r.materialId===plan.materialId &&
-      r.date===plan.date &&
-      (r.memo||"").includes(`予定完了:${plan.from}-${plan.to}`)
-    )
+    r.materialId===plan.materialId &&
+    r.date===plan.date &&
+    (r.memo||"").includes(`予定完了:${plan.from}-${plan.to}`)
   );
 }
 
 function completePlan(materialId,dateStr,from,to,minutes){
   const m=state.materials.find(x=>x.id===materialId);
-  if(!m){
-    alert("教材が見つかりません");
-    return;
-  }
+  if(!m)return;
 
-  const key=completedPlanKey(materialId,dateStr,from,to);
   const already=state.records.some(r=>
-    r.completedPlanKey===key ||
-    (
-      r.materialId===materialId &&
-      r.date===dateStr &&
-      (r.memo||"").includes(`予定完了:${from}-${to}`)
-    )
+    r.materialId===materialId &&
+    r.date===dateStr &&
+    (r.memo||"").includes(`予定完了:${from}-${to}`)
   );
 
   if(already){
@@ -1070,11 +991,9 @@ function completePlan(materialId,dateStr,from,to,minutes){
     return;
   }
 
-  const defaultMinutes=Number(minutes||30);
-  const input=prompt("実際の勉強時間（分）を入力してください", String(defaultMinutes));
+  let input=prompt("実際の勉強時間（分）を入力してください", String(minutes||30));
   if(input===null)return;
-
-  const actualMinutes=Number(String(input).trim());
+  const actualMinutes=Number(input);
   if(!actualMinutes || actualMinutes<=0){
     alert("勉強時間を正しく入力してください");
     return;
@@ -1088,14 +1007,11 @@ function completePlan(materialId,dateStr,from,to,minutes){
     date:dateStr,
     memo:`予定完了:${from}-${to} ${from}〜${to}${m.unit}`,
     materialId:m.id,
-    materialName:m.name,
-    completedPlanKey:key
+    materialName:m.name
   });
 
   save();
-  load();
   renderAll();
-  alert(`${actualMinutes}分を勉強記録に反映しました`);
 }
 
 function planHtml(plan,showButton=true){
@@ -1407,8 +1323,7 @@ function loadImportedData(){
     date:r.date||todayStr(),
     memo:r.memo||"",
     materialId:r.materialId||null,
-    materialName:r.materialName||r.material||"時間だけ入力",
-    completedPlanKey:r.completedPlanKey||""
+    materialName:r.materialName||r.material||"時間だけ入力"
   }));
 
   state.materials=(state.materials||[]).map(m=>({
@@ -1442,101 +1357,9 @@ function renderAll(){
   renderExamMode();
   renderRecordList();
 }
-
-function showLogin(msg=""){
-  document.getElementById("loginBox").classList.remove("hidden");
-  document.getElementById("appRoot").classList.add("hidden");
-  document.getElementById("loginError").textContent=msg;
-}
-
-function showApp(user){
-  document.getElementById("loginBox").classList.add("hidden");
-  document.getElementById("appRoot").classList.remove("hidden");
-  document.getElementById("userInfo").textContent="ログイン中："+user.email+" / Firebase同期ON";
-}
-
-window.login=async function(){
-  try{
-    document.getElementById("loginError").textContent="";
-    await signInWithEmailAndPassword(
-      auth,
-      document.getElementById("email").value.trim(),
-      document.getElementById("password").value
-    );
-  }catch(e){
-    document.getElementById("loginError").textContent=e.message||String(e);
-  }
-};
-
-window.logout=async function(){
-  if(unsubCloud){unsubCloud();unsubCloud=null;}
-  currentUser=null;
-  firebaseReady=false;
-  await signOut(auth);
-};
-
-function normalizeCloudData(data){
-  state={
-    records:Array.isArray(data?.records)?data.records:[],
-    materials:Array.isArray(data?.materials)?data.materials:[]
-  };
-  loadImportedData();
-}
-
-async function startFirebaseSync(){
-  if(unsubCloud){unsubCloud();unsubCloud=null;}
-
-  const snap=await getDoc(CLOUD_DOC);
-
-  if(snap.exists()){
-    isApplyingCloud=true;
-    normalizeCloudData(snap.data());
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
-    isApplyingCloud=false;
-  }else{
-    load();
-    await setDoc(CLOUD_DOC,{
-      records:state.records||[],
-      materials:state.materials||[],
-      updatedAtMs:Date.now(),
-      updatedAt:serverTimestamp()
-    },{merge:true});
-  }
-
-  firebaseReady=true;
-  initForms();
-  renderAll();
-
-  unsubCloud=onSnapshot(CLOUD_DOC,(docSnap)=>{
-    if(!docSnap.exists())return;
-    isApplyingCloud=true;
-    normalizeCloudData(docSnap.data());
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
-    isApplyingCloud=false;
-    renderAll();
-  },(e)=>{
-    alert("Firebase読込エラー: "+(e.message||e));
-  });
-}
-
-await setPersistence(auth,browserLocalPersistence);
-
-onAuthStateChanged(auth,async user=>{
-  if(!user){
-    showLogin();
-    return;
-  }
-  if(!allowedEmails.includes(user.email)){
-    showLogin("このアカウントは利用できません："+user.email);
-    await signOut(auth);
-    return;
-  }
-  currentUser=user;
-  showApp(user);
-  await startFirebaseSync();
-});
+load();
+initForms();
+renderAll();
 </script>
-
-</div>
 </body>
 </html>
