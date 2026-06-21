@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StudyQuest Ver9.0</title>
+<title>StudyQuest Ver9.1</title>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -401,7 +401,7 @@ input[type="file"]{
 
 <body>
 <header>
-  <h1>StudyQuest Ver9.0</h1>
+  <h1>StudyQuest Ver9.1</h1>
   <p>今日やること・教材管理・教科別グラフ・カレンダー</p>
 </header>
 
@@ -669,7 +669,8 @@ function load(){
     date:r.date||todayStr(),
     memo:r.memo||"",
     materialId:r.materialId||null,
-    materialName:r.materialName||r.material||"時間だけ入力"
+    materialName:r.materialName||r.material||"時間だけ入力",
+    completedPlanKey:r.completedPlanKey||""
   }));
 
   state.materials=(state.materials||[]).map(m=>({
@@ -968,22 +969,37 @@ function renderRainbowRanking(){
   document.getElementById("rainbowRanking").innerHTML=html;
 }
 
+function completedPlanKey(materialId,dateStr,from,to){
+  return `${materialId}_${dateStr}_${from}_${to}`;
+}
+
 function isPlanCompleted(plan){
+  const key=completedPlanKey(plan.materialId,plan.date,plan.from,plan.to);
   return state.records.some(r=>
-    r.materialId===plan.materialId &&
-    r.date===plan.date &&
-    (r.memo||"").includes(`予定完了:${plan.from}-${plan.to}`)
+    r.completedPlanKey===key ||
+    (
+      r.materialId===plan.materialId &&
+      r.date===plan.date &&
+      (r.memo||"").includes(`予定完了:${plan.from}-${plan.to}`)
+    )
   );
 }
 
 function completePlan(materialId,dateStr,from,to,minutes){
   const m=state.materials.find(x=>x.id===materialId);
-  if(!m)return;
+  if(!m){
+    alert("教材が見つかりません");
+    return;
+  }
 
+  const key=completedPlanKey(materialId,dateStr,from,to);
   const already=state.records.some(r=>
-    r.materialId===materialId &&
-    r.date===dateStr &&
-    (r.memo||"").includes(`予定完了:${from}-${to}`)
+    r.completedPlanKey===key ||
+    (
+      r.materialId===materialId &&
+      r.date===dateStr &&
+      (r.memo||"").includes(`予定完了:${from}-${to}`)
+    )
   );
 
   if(already){
@@ -991,9 +1007,11 @@ function completePlan(materialId,dateStr,from,to,minutes){
     return;
   }
 
-  let input=prompt("実際の勉強時間（分）を入力してください", String(minutes||30));
+  const defaultMinutes=Number(minutes||30);
+  const input=prompt("実際の勉強時間（分）を入力してください", String(defaultMinutes));
   if(input===null)return;
-  const actualMinutes=Number(input);
+
+  const actualMinutes=Number(String(input).trim());
   if(!actualMinutes || actualMinutes<=0){
     alert("勉強時間を正しく入力してください");
     return;
@@ -1007,11 +1025,14 @@ function completePlan(materialId,dateStr,from,to,minutes){
     date:dateStr,
     memo:`予定完了:${from}-${to} ${from}〜${to}${m.unit}`,
     materialId:m.id,
-    materialName:m.name
+    materialName:m.name,
+    completedPlanKey:key
   });
 
   save();
+  load();
   renderAll();
+  alert(`${actualMinutes}分を勉強記録に反映しました`);
 }
 
 function planHtml(plan,showButton=true){
@@ -1323,7 +1344,8 @@ function loadImportedData(){
     date:r.date||todayStr(),
     memo:r.memo||"",
     materialId:r.materialId||null,
-    materialName:r.materialName||r.material||"時間だけ入力"
+    materialName:r.materialName||r.material||"時間だけ入力",
+    completedPlanKey:r.completedPlanKey||""
   }));
 
   state.materials=(state.materials||[]).map(m=>({
