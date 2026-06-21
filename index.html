@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StudyQuest Ver9.1</title>
+<title>StudyQuest Ver9.2 Firebase</title>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -383,6 +383,19 @@ input[type="file"]{
   border:1px dashed #475569;
 }
 
+
+.hidden{display:none!important}
+.login-box{
+  max-width:420px;
+  margin:24px auto;
+}
+.login-user{
+  text-align:center;
+  color:#cbd5e1;
+  margin:8px 0 14px;
+  font-size:13px;
+}
+
 @media(max-width:700px){
   header h1{font-size:23px}
   .container{padding:10px}
@@ -400,12 +413,25 @@ input[type="file"]{
 </head>
 
 <body>
+
+<div id="loginBox" class="box login-box">
+  <h2>ログイン</h2>
+  <input id="email" type="email" placeholder="メールアドレス">
+  <input id="password" type="password" placeholder="パスワード">
+  <button onclick="window.login()">ログイン</button>
+  <div id="loginError" class="small"></div>
+</div>
+
+<div id="appRoot" class="hidden">
 <header>
-  <h1>StudyQuest Ver9.1</h1>
+  <h1>StudyQuest Ver9.2 Firebase</h1>
   <p>今日やること・教材管理・教科別グラフ・カレンダー</p>
 </header>
 
 <div class="container">
+  <div id="userInfo" class="login-user"></div>
+  <button class="btn-gray" onclick="window.logout()">ログアウト</button>
+
 
 <div class="main-tabs">
   <button class="active" onclick="showTab('todayTab',this)">今日やること</button>
@@ -610,7 +636,31 @@ input[type="file"]{
 
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyC9ucSVygIOhNsGvjj6mOlXbvtI2d1KnYw",
+  authDomain:"studycount-wata.firebaseapp.com",
+  projectId:"studycount-wata",
+  storageBucket:"studycount-wata.firebasestorage.app",
+  messagingSenderId:"497085827292",
+  appId:"1:497085827292:web:f4085fd6190eb853150c19"
+};
+
+const firebaseApp=initializeApp(firebaseConfig);
+const db=getFirestore(firebaseApp);
+const auth=getAuth(firebaseApp);
+const allowedEmails=["wata20040229@gmail.com","wawawawayanakemi@gmail.com","ke.2009.mi.2013@gmail.com"];
+const CLOUD_DOC=doc(db,"studyQuestV9","sharedData");
+let currentUser=null;
+let unsubCloud=null;
+let isApplyingCloud=false;
+let firebaseReady=false;
+
+
 const SUBJECTS=["国語","数学","英語","理科","社会","その他"];
 const PEOPLE=["けいと","みく","尚子"];
 const STORAGE_KEY="studyquest_v8_data";
@@ -686,9 +736,22 @@ function load(){
     exam:m.exam||m.examDate||m.end||todayStr()
   }));
 
-  save();
 }
-function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+async function save(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  if(firebaseReady && currentUser && !isApplyingCloud){
+    try{
+      await setDoc(CLOUD_DOC,{
+        records:state.records||[],
+        materials:state.materials||[],
+        updatedAtMs:Date.now(),
+        updatedAt:serverTimestamp()
+      },{merge:true});
+    }catch(e){
+      alert("Firebase保存エラー: "+(e.message||e));
+    }
+  }
+}
 function showTab(id,btn){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   document.getElementById(id).classList.add("active");
@@ -1379,9 +1442,101 @@ function renderAll(){
   renderExamMode();
   renderRecordList();
 }
-load();
-initForms();
-renderAll();
+
+function showLogin(msg=""){
+  document.getElementById("loginBox").classList.remove("hidden");
+  document.getElementById("appRoot").classList.add("hidden");
+  document.getElementById("loginError").textContent=msg;
+}
+
+function showApp(user){
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("appRoot").classList.remove("hidden");
+  document.getElementById("userInfo").textContent="ログイン中："+user.email+" / Firebase同期ON";
+}
+
+window.login=async function(){
+  try{
+    document.getElementById("loginError").textContent="";
+    await signInWithEmailAndPassword(
+      auth,
+      document.getElementById("email").value.trim(),
+      document.getElementById("password").value
+    );
+  }catch(e){
+    document.getElementById("loginError").textContent=e.message||String(e);
+  }
+};
+
+window.logout=async function(){
+  if(unsubCloud){unsubCloud();unsubCloud=null;}
+  currentUser=null;
+  firebaseReady=false;
+  await signOut(auth);
+};
+
+function normalizeCloudData(data){
+  state={
+    records:Array.isArray(data?.records)?data.records:[],
+    materials:Array.isArray(data?.materials)?data.materials:[]
+  };
+  loadImportedData();
+}
+
+async function startFirebaseSync(){
+  if(unsubCloud){unsubCloud();unsubCloud=null;}
+
+  const snap=await getDoc(CLOUD_DOC);
+
+  if(snap.exists()){
+    isApplyingCloud=true;
+    normalizeCloudData(snap.data());
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    isApplyingCloud=false;
+  }else{
+    load();
+    await setDoc(CLOUD_DOC,{
+      records:state.records||[],
+      materials:state.materials||[],
+      updatedAtMs:Date.now(),
+      updatedAt:serverTimestamp()
+    },{merge:true});
+  }
+
+  firebaseReady=true;
+  initForms();
+  renderAll();
+
+  unsubCloud=onSnapshot(CLOUD_DOC,(docSnap)=>{
+    if(!docSnap.exists())return;
+    isApplyingCloud=true;
+    normalizeCloudData(docSnap.data());
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    isApplyingCloud=false;
+    renderAll();
+  },(e)=>{
+    alert("Firebase読込エラー: "+(e.message||e));
+  });
+}
+
+await setPersistence(auth,browserLocalPersistence);
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    showLogin();
+    return;
+  }
+  if(!allowedEmails.includes(user.email)){
+    showLogin("このアカウントは利用できません："+user.email);
+    await signOut(auth);
+    return;
+  }
+  currentUser=user;
+  showApp(user);
+  await startFirebaseSync();
+});
 </script>
+
+</div>
 </body>
 </html>
