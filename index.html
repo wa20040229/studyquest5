@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StudyQuest Ver8.9</title>
+<title>StudyQuest Ver9.0</title>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -358,6 +358,31 @@ textarea{resize:vertical}
   font-size:13px;
 }
 
+
+.complete-btn{
+  width:auto;
+  padding:7px 11px;
+  font-size:12px;
+  border-radius:999px;
+  margin-top:8px;
+  background:linear-gradient(135deg,#16a34a,#22c55e);
+  box-shadow:none;
+}
+.complete-btn.done-already{
+  background:#475569;
+  color:#cbd5e1;
+}
+.file-row{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+  margin-top:8px;
+}
+input[type="file"]{
+  background:#020617;
+  border:1px dashed #475569;
+}
+
 @media(max-width:700px){
   header h1{font-size:23px}
   .container{padding:10px}
@@ -376,7 +401,7 @@ textarea{resize:vertical}
 
 <body>
 <header>
-  <h1>StudyQuest Ver8.9</h1>
+  <h1>StudyQuest Ver9.0</h1>
   <p>今日やること・教材管理・教科別グラフ・カレンダー</p>
 </header>
 
@@ -432,6 +457,9 @@ textarea{resize:vertical}
 
     <label>単位</label>
     <input id="materialUnit" placeholder="例：ページ、問、単語">
+
+    <label>1単位あたりの目安時間（分）</label>
+    <input id="materialMinutesPerUnit" type="number" min="1" placeholder="例：1ページ5分、1問3分">
 
     <label>開始日</label>
     <input type="date" id="materialStart">
@@ -565,12 +593,18 @@ textarea{resize:vertical}
   <div class="box">
     <h2>データ管理</h2>
     <button class="btn-gray" onclick="exportData()">エクスポート用データを表示</button>
+    <button class="btn-gray" onclick="downloadBackupFile()">バックアップファイル保存</button>
     <textarea id="backupArea" rows="7" placeholder="ここにエクスポート用データが表示されます"></textarea>
 
     <h3>インポート</h3>
     <div class="import-warning">インポートすると、現在のデータは貼り付けたデータで置き換わります。必要なら先にエクスポートしてください。</div>
     <textarea id="importArea" rows="7" placeholder="ここにバックアップデータを貼り付けてください"></textarea>
-    <button class="btn-orange" onclick="importData()">インポートする</button>
+    <button class="btn-orange" onclick="importData()">テキストからインポートする</button>
+
+    <h3>ファイルから復元</h3>
+    <div class="file-row">
+      <input id="backupFileInput" type="file" accept=".json,application/json" onchange="importBackupFile(event)">
+    </div>
   </div>
 </section>
 
@@ -597,7 +631,22 @@ let filters={
   manage:"all"
 };
 
-function todayStr(){return new Date().toISOString().slice(0,10)}
+function formatDateLocal(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+
+function parseDateLocal(str){
+  const [y,m,d]=str.split("-").map(Number);
+  return new Date(y,m-1,d);
+}
+
+function todayStr(){
+  return formatDateLocal(new Date());
+}
+
 function uid(){
   if(window.crypto && crypto.randomUUID)return crypto.randomUUID();
   return "id_"+Date.now()+"_"+Math.random().toString(16).slice(2);
@@ -630,6 +679,7 @@ function load(){
     name:m.name||m.title||"教材",
     total:Number(m.total||0),
     unit:m.unit||"",
+    minutesPerUnit:Number(m.minutesPerUnit||10),
     start:m.start||m.startDate||todayStr(),
     end:m.end||m.endDate||m.exam||todayStr(),
     exam:m.exam||m.examDate||m.end||todayStr()
@@ -713,6 +763,7 @@ function clearMaterialForm(){
   document.getElementById("materialName").value="";
   document.getElementById("materialTotal").value="";
   document.getElementById("materialUnit").value="";
+  document.getElementById("materialMinutesPerUnit").value="";
   document.getElementById("materialStart").value=todayStr();
   document.getElementById("materialEnd").value=todayStr();
   document.getElementById("materialExam").value=todayStr();
@@ -728,6 +779,7 @@ function addMaterial(){
     subject:document.getElementById("materialSubject").value,
     name,total,
     unit:document.getElementById("materialUnit").value.trim(),
+    minutesPerUnit:Number(document.getElementById("materialMinutesPerUnit").value||10),
     start:document.getElementById("materialStart").value,
     end:document.getElementById("materialEnd").value,
     exam:document.getElementById("materialExam").value
@@ -743,6 +795,7 @@ function startEditMaterial(id){
   document.getElementById("materialName").value=m.name;
   document.getElementById("materialTotal").value=m.total;
   document.getElementById("materialUnit").value=m.unit;
+  document.getElementById("materialMinutesPerUnit").value=m.minutesPerUnit||10;
   document.getElementById("materialStart").value=m.start;
   document.getElementById("materialEnd").value=m.end;
   document.getElementById("materialExam").value=m.exam;
@@ -763,6 +816,7 @@ function updateMaterial(){
   m.name=name;
   m.total=total;
   m.unit=document.getElementById("materialUnit").value.trim();
+  m.minutesPerUnit=Number(document.getElementById("materialMinutesPerUnit").value||10);
   m.start=document.getElementById("materialStart").value;
   m.end=document.getElementById("materialEnd").value;
   m.exam=document.getElementById("materialExam").value;
@@ -833,11 +887,11 @@ function inRange(dateStr){
   if(currentRange==="year")return diff>=0 && diff<366;
   return true;
 }
-function dateKey(d){return d.toISOString().slice(0,10)}
+function dateKey(d){return formatDateLocal(d)}
 function calcInclusiveDays(startStr,endStr){
-  const start=new Date(startStr);
-  const end=new Date(endStr);
-  return Math.max(1,Math.floor((end-start)/(1000*60*60*24))+1);
+  const start=parseDateLocal(startStr);
+  const end=parseDateLocal(endStr);
+  return Math.max(1,Math.round((end-start)/(1000*60*60*24))+1);
 }
 function calcPerDay(material){
   const days=calcInclusiveDays(material.start,material.end);
@@ -851,19 +905,33 @@ function getDayItems(dateStr,key="calendar"){
   state.materials.filter(m=>personOk(m.person,key)).forEach(m=>{
     if(m.exam===dateStr)exams.push(`${m.person}｜${m.subject} ${m.name}`);
 
-    const start=new Date(m.start);
-    const end=new Date(m.end);
-    const target=new Date(dateStr);
+    const start=parseDateLocal(m.start);
+    const end=parseDateLocal(m.end);
+    const target=parseDateLocal(dateStr);
     if(target<start||target>end)return;
 
     const days=calcInclusiveDays(m.start,m.end);
     const per=Math.ceil(m.total/days);
-    const dayIndex=Math.floor((target-start)/(1000*60*60*24));
+    const dayIndex=Math.round((target-start)/(1000*60*60*24));
     const from=dayIndex*per+1;
     const to=Math.min(m.total,(dayIndex+1)*per);
 
     if(from<=m.total){
-      plans.push(`${m.person}｜${m.subject} ${m.name} ${from}〜${to}${m.unit}`);
+      const count=Math.max(0,to-from+1);
+      const minutes=count*Number(m.minutesPerUnit||10);
+      plans.push({
+        materialId:m.id,
+        person:m.person,
+        subject:m.subject,
+        name:m.name,
+        unit:m.unit,
+        from,
+        to,
+        count,
+        minutes,
+        date:dateStr,
+        text:`${m.person}｜${m.subject} ${m.name} ${from}〜${to}${m.unit}`
+      });
     }
   });
 
@@ -900,6 +968,60 @@ function renderRainbowRanking(){
   document.getElementById("rainbowRanking").innerHTML=html;
 }
 
+function isPlanCompleted(plan){
+  return state.records.some(r=>
+    r.materialId===plan.materialId &&
+    r.date===plan.date &&
+    (r.memo||"").includes(`予定完了:${plan.from}-${plan.to}`)
+  );
+}
+
+function completePlan(materialId,dateStr,from,to,minutes){
+  const m=state.materials.find(x=>x.id===materialId);
+  if(!m)return;
+
+  const already=state.records.some(r=>
+    r.materialId===materialId &&
+    r.date===dateStr &&
+    (r.memo||"").includes(`予定完了:${from}-${to}`)
+  );
+
+  if(already){
+    alert("この予定はすでに完了済みです");
+    return;
+  }
+
+  let input=prompt("実際の勉強時間（分）を入力してください", String(minutes||30));
+  if(input===null)return;
+  const actualMinutes=Number(input);
+  if(!actualMinutes || actualMinutes<=0){
+    alert("勉強時間を正しく入力してください");
+    return;
+  }
+
+  state.records.push({
+    id:uid(),
+    person:m.person,
+    subject:m.subject||"その他",
+    minutes:actualMinutes,
+    date:dateStr,
+    memo:`予定完了:${from}-${to} ${from}〜${to}${m.unit}`,
+    materialId:m.id,
+    materialName:m.name
+  });
+
+  save();
+  renderAll();
+}
+
+function planHtml(plan,showButton=true){
+  const completed=isPlanCompleted(plan);
+  const btn=showButton
+    ? `<br><button class="complete-btn ${completed?'done-already':''}" onclick="completePlan('${plan.materialId}','${plan.date}',${plan.from},${plan.to},${plan.minutes})">${completed?'完了済み':'完了して記録'}</button>`
+    : "";
+  return `${plan.text}<br><span class="small">目安 ${plan.minutes}分</span>${btn}`;
+}
+
 function renderDashboard(){
   const records=filterByPerson(state.records,"dashboard");
   const materials=filterByPerson(state.materials,"dashboard");
@@ -914,9 +1036,9 @@ function renderDashboard(){
     return diff>=0&&diff<31;
   }));
   const nextExam=materials
-    .filter(m=>new Date(m.exam)>=new Date(today))
-    .sort((a,b)=>new Date(a.exam)-new Date(b.exam))[0];
-  const remain=nextExam?Math.ceil((new Date(nextExam.exam)-new Date(today))/(1000*60*60*24)):"-";
+    .filter(m=>parseDateLocal(m.exam)>=parseDateLocal(today))
+    .sort((a,b)=>parseDateLocal(a.exam)-parseDateLocal(b.exam))[0];
+  const remain=nextExam?Math.ceil((parseDateLocal(nextExam.exam)-parseDateLocal(today))/(1000*60*60*24)):"-";
 
   document.getElementById("dashboard").innerHTML=`
     <div class="stat">今日<br><strong>${Math.round(todayMin/60*10)/10}h</strong></div>
@@ -934,7 +1056,7 @@ function renderToday(){
 
   let html="";
   items.exams.forEach(x=>html+=`<div class="task"><strong>試験日</strong><br>${x}</div>`);
-  items.plans.forEach(x=>html+=`<div class="task"><strong>予定</strong><br>${x}</div>`);
+  items.plans.forEach(x=>html+=`<div class="task"><strong>予定</strong><br>${planHtml(x,true)}</div>`);
   items.recs.forEach(r=>{
     html+=`<div class="task done"><strong>実績</strong><br>${r.person}｜${r.subject}｜${r.materialName}｜${r.minutes}分<br><span class="small">${r.memo||""}</span></div>`;
   });
@@ -958,7 +1080,8 @@ function renderMaterialList(){
         <td>
           ${m.name}<br>
           <span class="small">総量：${m.total}${m.unit}</span><br>
-          <span class="small">1日あたり：${perDay}${m.unit} / ${days}日</span>
+          <span class="small">1日あたり：${perDay}${m.unit} / ${days}日</span><br>
+          <span class="small">目安：1${m.unit}あたり ${m.minutesPerUnit||10}分</span>
         </td>
         <td>${m.start}<br>〜${m.end}</td>
         <td>${m.exam}</td>
@@ -1032,7 +1155,7 @@ function renderMonthCalendar(y,m){
 
     let html=`<div class="day ${todayClass} ${outside} ${dowClass}"><div class="day-num">${d.getDate()}</div>`;
     items.exams.slice(0,1).forEach(x=>html+=`<div class="exam-mark">試験：${x}</div>`);
-    items.plans.slice(0,2).forEach(x=>html+=`<div class="plan">${x}</div>`);
+    items.plans.slice(0,2).forEach(x=>html+=`<div class="plan">${x.text}</div>`);
     items.recs.slice(0,2).forEach(r=>html+=`<div class="done">${r.person}｜${r.subject} ${r.minutes}分</div>`);
     const extra=items.exams.length+items.plans.length+items.recs.length-5;
     if(extra>0)html+=`<div class="small">他${extra}件</div>`;
@@ -1056,7 +1179,7 @@ function renderListCalendar(y,m){
       html+=`<div class="small">予定・実績なし</div>`;
     }
     items.exams.forEach(x=>html+=`<div class="exam-mark">試験：${x}</div>`);
-    items.plans.forEach(x=>html+=`<div class="plan">予定：${x}</div>`);
+    items.plans.forEach(x=>html+=`<div class="plan">予定：${planHtml(x,true)}</div>`);
     items.recs.forEach(r=>html+=`<div class="done">実績：${r.person}｜${r.subject}｜${r.materialName}｜${r.minutes}分 ${r.memo||""}</div>`);
     html+="</div>";
   }
@@ -1068,7 +1191,7 @@ function moveMonth(n){
   renderCalendar();
 }
 function renderExamMode(){
-  const today=new Date(todayStr());
+  const today=parseDateLocal(todayStr());
   const list=state.materials.filter(m=>personOk(m.person,"exam"));
   if(list.length===0){
     document.getElementById("examMode").innerHTML="<p>教材はまだ登録されていません。</p>";
@@ -1077,7 +1200,7 @@ function renderExamMode(){
 
   let html='<div class="table-wrap"><table><tr><th>名前</th><th>教材</th><th>教科</th><th>試験まで</th><th>実績</th><th>状況</th></tr>';
   list.forEach(m=>{
-    const exam=new Date(m.exam);
+    const exam=parseDateLocal(m.exam);
     const remain=Math.ceil((exam-today)/(1000*60*60*24));
     const recs=state.records.filter(r=>r.materialId===m.id);
     const done=sumMinutes(recs);
@@ -1136,6 +1259,30 @@ function exportData(){
   document.getElementById("backupArea").value=JSON.stringify(state,null,2);
 }
 
+function downloadBackupFile(){
+  const data=JSON.stringify(state,null,2);
+  const blob=new Blob([data],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`studyquest_backup_${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importBackupFile(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    document.getElementById("importArea").value=reader.result;
+    importData();
+  };
+  reader.readAsText(file);
+}
+
 function importData(){
   const text=document.getElementById("importArea").value.trim();
   if(!text){
@@ -1186,6 +1333,7 @@ function loadImportedData(){
     name:m.name||m.title||"教材",
     total:Number(m.total||0),
     unit:m.unit||"",
+    minutesPerUnit:Number(m.minutesPerUnit||10),
     start:m.start||m.startDate||todayStr(),
     end:m.end||m.endDate||m.exam||todayStr(),
     exam:m.exam||m.examDate||m.end||todayStr()
