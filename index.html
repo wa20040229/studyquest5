@@ -4,71 +4,124 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StudyQuest Ver8.0</title>
+<title>StudyQuest Ver8.1</title>
 <style>
 *{box-sizing:border-box}
+:root{
+  --bg:#eef2f7;
+  --card:#ffffff;
+  --main:#2563eb;
+  --main-dark:#1e40af;
+  --text:#1f2937;
+  --muted:#64748b;
+  --line:#d8dee9;
+  --soft:#f8fafc;
+  --green:#16a34a;
+  --red:#dc2626;
+}
 body{
   margin:0;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;
-  background:#f4f6fb;
-  color:#222;
+  background:linear-gradient(180deg,#eef2ff 0%,#f8fafc 260px);
+  color:var(--text);
 }
 header{
-  background:linear-gradient(135deg,#5b7cfa,#8b5cf6);
+  background:linear-gradient(135deg,#1e3a8a,#2563eb);
   color:white;
-  padding:18px 14px;
+  padding:22px 14px 24px;
   text-align:center;
+  box-shadow:0 8px 24px rgba(30,64,175,.25);
 }
-header h1{margin:0;font-size:26px}
-header p{margin:6px 0 0;font-size:14px}
-.container{max-width:1100px;margin:auto;padding:12px}
-.tabs{
+header h1{
+  margin:0;
+  font-size:28px;
+  letter-spacing:.03em;
+}
+header p{
+  margin:7px 0 0;
+  font-size:14px;
+  opacity:.9;
+}
+.container{
+  max-width:1120px;
+  margin:auto;
+  padding:14px;
+}
+.main-tabs{
   display:flex;
   gap:8px;
   overflow-x:auto;
-  padding:10px 0;
+  padding:10px 0 12px;
   position:sticky;
   top:0;
-  background:#f4f6fb;
+  background:rgba(248,250,252,.94);
+  backdrop-filter:blur(10px);
   z-index:10;
+  border-bottom:1px solid rgba(216,222,233,.8);
 }
-.tab-btn{
+.main-tabs button{
   flex:0 0 auto;
   width:auto;
-  border:none;
-  border-radius:999px;
+  margin:0;
   padding:10px 14px;
-  background:#e5e7eb;
-  color:#333;
-  font-weight:bold;
-  font-size:14px;
+  border-radius:12px;
+  background:white;
+  color:#334155;
+  border:1px solid var(--line);
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
 }
-.tab-btn.active{
-  background:#5b7cfa;
+.main-tabs button.active{
+  background:var(--main);
   color:white;
+  border-color:var(--main);
+  box-shadow:0 6px 14px rgba(37,99,235,.25);
 }
 .tab{display:none}
 .tab.active{display:block}
 .box{
-  background:white;
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(216,222,233,.9);
   border-radius:16px;
-  padding:14px;
-  margin-bottom:14px;
-  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow:0 10px 28px rgba(15,23,42,.08);
   overflow:hidden;
 }
-h2{margin:0 0 12px;font-size:20px}
-h3{margin:16px 0 8px;font-size:17px}
-label{display:block;font-weight:bold;margin-top:10px}
-input,select,textarea,button{
+h2{
+  margin:0 0 14px;
+  font-size:21px;
+  color:#172554;
+}
+h3{
+  margin:18px 0 10px;
+  font-size:16px;
+  color:#1e3a8a;
+  border-left:4px solid var(--main);
+  padding-left:9px;
+}
+label{
+  display:block;
+  font-weight:700;
+  margin-top:12px;
+  color:#374151;
+  font-size:14px;
+}
+input,select,textarea{
   width:100%;
   max-width:100%;
   min-width:0;
-  padding:11px;
-  margin-top:5px;
-  border:1px solid #d6d9e3;
-  border-radius:10px;
+  padding:12px 13px;
+  margin-top:6px;
+  border:1px solid #cbd5e1;
+  border-radius:12px;
   font-size:16px;
+  background:#fff;
+  color:#111827;
+  outline:none;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--main);
+  box-shadow:0 0 0 3px rgba(37,99,235,.14);
 }
 input[type="date"]{
   display:block;
@@ -81,88 +134,143 @@ input[type="date"]{
   overflow:hidden;
 }
 button{
-  background:#5b7cfa;
-  color:white;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  padding:12px;
+  margin-top:8px;
   border:none;
-  font-weight:bold;
+  border-radius:12px;
+  font-size:15px;
+  font-weight:800;
   cursor:pointer;
+  background:var(--main);
+  color:white;
+  box-shadow:0 6px 14px rgba(37,99,235,.18);
 }
-button:hover{opacity:.9}
-.btn-red{background:#ef4444}
-.btn-green{background:#22c55e}
-.btn-gray{background:#64748b}
+button:hover{filter:brightness(.97)}
+.btn-red{background:var(--red);box-shadow:none}
+.btn-gray{background:#475569;box-shadow:none}
 .btn-small{
   width:auto;
   padding:7px 10px;
-  font-size:13px;
+  font-size:12px;
+  border-radius:9px;
   margin:2px;
 }
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
-  gap:10px;
+  gap:12px;
 }
-.card{
-  background:#eef2ff;
+.stat{
+  background:linear-gradient(180deg,#ffffff,#f8fafc);
+  border:1px solid var(--line);
   border-radius:14px;
   padding:12px;
+  box-shadow:0 4px 12px rgba(15,23,42,.05);
 }
-.card strong{font-size:22px}
-.person-filter{
+.stat strong{
+  display:block;
+  margin-top:4px;
+  font-size:24px;
+  color:#1d4ed8;
+}
+.sub-tabs,.person-filter{
   display:flex;
-  gap:6px;
+  gap:8px;
   flex-wrap:wrap;
-  margin:8px 0 12px;
+  margin:8px 0 14px;
 }
-.person-filter button{
+.sub-tabs button,.person-filter button{
   width:auto;
-  padding:8px 12px;
-  background:#e5e7eb;
-  color:#333;
+  padding:8px 13px;
+  background:#f8fafc;
+  color:#334155;
+  border:1px solid var(--line);
+  box-shadow:none;
+  border-radius:999px;
 }
 .person-filter button.active{
-  background:#5b7cfa;
+  background:#1d4ed8;
   color:white;
+  border-color:#1d4ed8;
 }
 .task{
-  border-left:5px solid #5b7cfa;
-  background:#f8fafc;
-  border-radius:10px;
-  padding:10px;
-  margin:8px 0;
+  border:1px solid #c7d2fe;
+  border-left:5px solid var(--main);
+  background:#f8faff;
+  border-radius:14px;
+  padding:12px;
+  margin:9px 0;
 }
-.task.done{border-left-color:#22c55e;background:#f0fdf4}
-.small{font-size:12px;color:#666}
+.task.done{
+  border-color:#bbf7d0;
+  border-left-color:var(--green);
+  background:#f6fff8;
+}
+.small{font-size:12px;color:var(--muted)}
+.table-wrap{
+  overflow-x:auto;
+  border:1px solid var(--line);
+  border-radius:14px;
+}
 table{
   width:100%;
   border-collapse:collapse;
   font-size:14px;
+  background:white;
+}
+th{
+  background:#f1f5f9;
+  color:#334155;
+  font-weight:800;
 }
 th,td{
   border-bottom:1px solid #e5e7eb;
-  padding:8px;
+  padding:9px;
   text-align:left;
   vertical-align:top;
 }
-.table-wrap{overflow-x:auto}
+tr:last-child td{border-bottom:none}
 .calendar{
   display:grid;
   grid-template-columns:repeat(7,1fr);
-  gap:6px;
+  gap:8px;
 }
 .day{
   background:white;
-  border:1px solid #e5e7eb;
-  border-radius:10px;
-  min-height:110px;
-  padding:6px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  min-height:118px;
+  padding:8px;
   font-size:12px;
   overflow:hidden;
+  box-shadow:0 2px 7px rgba(15,23,42,.04);
 }
-.day.today{border:3px solid #5b7cfa}
-.day-num{font-weight:bold;margin-bottom:4px}
-.plan{background:#dbeafe;border-radius:5px;padding:3px;margin:2px 0}
-.done-item{background:#dcfce7;border-radius:5px;padding:3px;margin:2px 0}
+.day.today{
+  border:2px solid var(--main);
+  box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+.day-num{
+  font-weight:800;
+  color:#1e3a8a;
+  margin-bottom:5px;
+}
+.plan{
+  background:#eff6ff;
+  border:1px solid #bfdbfe;
+  border-radius:7px;
+  padding:4px;
+  margin:3px 0;
+}
+.done{
+  background:#f0fdf4;
+  border:1px solid #bbf7d0;
+  border-radius:7px;
+  padding:4px;
+  margin:3px 0;
+}
 .bar-wrap{
   background:#e5e7eb;
   border-radius:999px;
@@ -170,55 +278,63 @@ th,td{
   height:22px;
 }
 .bar{
-  background:#5b7cfa;
+  background:linear-gradient(90deg,#2563eb,#60a5fa);
   height:22px;
   color:white;
-  text-align:right;
-  padding-right:6px;
   font-size:12px;
+  text-align:right;
+  padding-right:7px;
+  line-height:22px;
   white-space:nowrap;
 }
+textarea{resize:vertical}
 @media(max-width:700px){
-  header h1{font-size:22px}
+  header h1{font-size:23px}
   .container{padding:10px}
+  .box{padding:14px;border-radius:15px}
   .calendar{grid-template-columns:repeat(2,1fr)}
-  th,td{font-size:12px;padding:6px}
+  th,td{font-size:12px;padding:7px}
+  .main-tabs{padding:9px 0}
+  .main-tabs button{font-size:13px;padding:9px 12px}
 }
 </style>
 </head>
 
 <body>
 <header>
-  <h1>StudyQuest Ver8.0</h1>
+  <h1>StudyQuest Ver8.1</h1>
   <p>今日やること・教材管理・教科別グラフ・カレンダー</p>
 </header>
 
 <div class="container">
 
-<div class="tabs">
-  <button class="tab-btn active" onclick="showTab('today',this)">今日やること</button>
-  <button class="tab-btn" onclick="showTab('materials',this)">教材管理</button>
-  <button class="tab-btn" onclick="showTab('record',this)">勉強記録</button>
-  <button class="tab-btn" onclick="showTab('calendar',this)">カレンダー</button>
-  <button class="tab-btn" onclick="showTab('graph',this)">グラフ</button>
-  <button class="tab-btn" onclick="showTab('exam',this)">試験モード</button>
-  <button class="tab-btn" onclick="showTab('manage',this)">記録管理</button>
+<div class="main-tabs">
+  <button class="active" onclick="showTab('todayTab',this)">今日やること</button>
+  <button onclick="showTab('materialTab',this)">教材管理</button>
+  <button onclick="showTab('recordTab',this)">勉強記録</button>
+  <button onclick="showTab('calendarTab',this)">カレンダー</button>
+  <button onclick="showTab('graphTab',this)">グラフ</button>
+  <button onclick="showTab('examTab',this)">試験モード</button>
+  <button onclick="showTab('manageTab',this)">記録管理</button>
 </div>
 
-<section id="today" class="tab active">
+<section id="todayTab" class="tab active">
+  <div class="box">
+    <h2>ダッシュボード</h2>
+    <div class="grid" id="dashboard"></div>
+  </div>
+
   <div class="box">
     <h2>今日やること</h2>
-    <div id="todayFilter" class="person-filter"></div>
-    <div class="grid" id="todaySummary"></div>
-    <h3>今日の予定</h3>
+    <div id="todayPersonFilter" class="person-filter"></div>
     <div id="todayTasks"></div>
   </div>
 </section>
 
-<section id="materials" class="tab">
+<section id="materialTab" class="tab">
   <div class="box">
     <h2>教材管理</h2>
-    <div id="materialsFilter" class="person-filter"></div>
+    <div id="materialPersonFilter" class="person-filter"></div>
 
     <label>名前</label>
     <select id="materialPerson"></select>
@@ -230,19 +346,19 @@ th,td{
     <input id="materialName" placeholder="例：数学ワーク">
 
     <label>総量</label>
-    <input id="materialTotal" type="number" min="1" placeholder="例：120">
+    <input type="number" id="materialTotal" min="1" placeholder="例：120">
 
     <label>単位</label>
     <input id="materialUnit" placeholder="例：ページ、問、単語">
 
     <label>開始日</label>
-    <input id="materialStart" type="date">
+    <input type="date" id="materialStart">
 
     <label>終了日</label>
-    <input id="materialEnd" type="date">
+    <input type="date" id="materialEnd">
 
     <label>試験日</label>
-    <input id="materialExam" type="date">
+    <input type="date" id="materialExam">
 
     <button onclick="addMaterial()">教材を登録</button>
   </div>
@@ -253,7 +369,7 @@ th,td{
   </div>
 </section>
 
-<section id="record" class="tab">
+<section id="recordTab" class="tab">
   <div class="box">
     <h2>勉強記録</h2>
 
@@ -262,10 +378,10 @@ th,td{
     <select id="recordMaterial"></select>
 
     <label>勉強時間（分）</label>
-    <input id="materialMinutes" type="number" min="1">
+    <input type="number" id="materialMinutes" min="1">
 
     <label>日付</label>
-    <input id="materialRecordDate" type="date">
+    <input type="date" id="materialRecordDate">
 
     <label>メモ</label>
     <textarea id="materialMemo" rows="2"></textarea>
@@ -280,10 +396,10 @@ th,td{
     <select id="quickSubject"></select>
 
     <label>勉強時間（分）</label>
-    <input id="quickMinutes" type="number" min="1">
+    <input type="number" id="quickMinutes" min="1">
 
     <label>日付</label>
-    <input id="quickDate" type="date">
+    <input type="date" id="quickDate">
 
     <label>メモ</label>
     <textarea id="quickMemo" rows="2"></textarea>
@@ -292,103 +408,115 @@ th,td{
   </div>
 </section>
 
-<section id="calendar" class="tab">
+<section id="calendarTab" class="tab">
   <div class="box">
     <h2>カレンダー</h2>
-    <div id="calendarFilter" class="person-filter"></div>
-    <div class="grid">
+    <div id="calendarPersonFilter" class="person-filter"></div>
+    <div class="sub-tabs">
       <button onclick="moveMonth(-1)">前月</button>
       <button onclick="moveMonth(0)">今月</button>
       <button onclick="moveMonth(1)">次月</button>
     </div>
     <h3 id="calendarTitle"></h3>
-    <div id="calendarGrid" class="calendar"></div>
+    <div class="calendar" id="calendar"></div>
   </div>
 </section>
 
-<section id="graph" class="tab">
+<section id="graphTab" class="tab">
   <div class="box">
     <h2>グラフ</h2>
-    <div id="graphFilter" class="person-filter"></div>
-    <div class="grid">
-      <button onclick="setGraphRange('week')">1週間</button>
-      <button onclick="setGraphRange('month')">1ヶ月</button>
-      <button onclick="setGraphRange('year')">年間</button>
-      <button onclick="setGraphRange('all')">All</button>
+    <div id="graphPersonFilter" class="person-filter"></div>
+    <div class="sub-tabs">
+      <button onclick="setRange('week')">1週間</button>
+      <button onclick="setRange('month')">1ヶ月</button>
+      <button onclick="setRange('year')">年間</button>
+      <button onclick="setRange('all')">All</button>
     </div>
-
     <h3>教科別グラフ</h3>
     <div id="subjectGraph"></div>
-
     <h3>人別グラフ</h3>
     <div id="personGraph"></div>
   </div>
 </section>
 
-<section id="exam" class="tab">
+<section id="examTab" class="tab">
   <div class="box">
     <h2>試験モード</h2>
-    <div id="examFilter" class="person-filter"></div>
-    <div id="examList"></div>
+    <div id="examPersonFilter" class="person-filter"></div>
+    <div id="examMode"></div>
   </div>
 </section>
 
-<section id="manage" class="tab">
+<section id="manageTab" class="tab">
   <div class="box">
     <h2>記録管理</h2>
-    <div id="manageFilter" class="person-filter"></div>
-    <p class="small">削除したい記録だけを選んで削除できます。</p>
+    <div id="managePersonFilter" class="person-filter"></div>
+    <p class="small">削除したい記録を選んで削除できます。</p>
     <div id="recordList"></div>
   </div>
 
   <div class="box">
-    <h2>バックアップ</h2>
+    <h2>データ管理</h2>
     <button class="btn-gray" onclick="exportData()">バックアップを表示</button>
-    <textarea id="backupArea" rows="6"></textarea>
+    <textarea id="backupArea" rows="6" placeholder="ここにバックアップが表示されます"></textarea>
   </div>
 </section>
 
 </div>
 
 <script>
-const PEOPLE=["けいと","みく","尚子"];
 const SUBJECTS=["国語","数学","英語","理科","社会","その他"];
-const STORAGE_KEY="studyquest_v8";
+const PEOPLE=["けいと","みく","尚子"];
+const STORAGE_KEY="studyquest_v8_data";
 
-let state={materials:[],records:[]};
+let state={records:[],materials:[]};
+let currentRange="week";
+let calendarDate=new Date();
 let filters={
   today:"all",
-  materials:"all",
+  material:"all",
   calendar:"all",
   graph:"all",
   exam:"all",
   manage:"all"
 };
-let graphRange="week";
-let calendarDate=new Date();
 
 function todayStr(){
   return new Date().toISOString().slice(0,10);
 }
 
-function uuid(){
+function uid(){
   if(window.crypto && crypto.randomUUID)return crypto.randomUUID();
   return "id_"+Date.now()+"_"+Math.random().toString(16).slice(2);
 }
 
-function save(){
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+function normalizePerson(p){
+  if(p==="息子")return "けいと";
+  if(p==="娘")return "みく";
+  if(p==="自分")return "尚子";
+  return p||"尚子";
 }
 
 function load(){
   const saved=localStorage.getItem(STORAGE_KEY);
   if(saved){
-    try{state=JSON.parse(saved)}catch(e){state={materials:[],records:[]}}
+    try{state=JSON.parse(saved)}catch(e){state={records:[],materials:[]}}
   }
 
+  state.records=(state.records||[]).map(r=>({
+    id:r.id||uid(),
+    person:normalizePerson(r.person||r.user),
+    subject:r.subject||"その他",
+    minutes:Number(r.minutes||r.time||0),
+    date:r.date||todayStr(),
+    memo:r.memo||"",
+    materialId:r.materialId||null,
+    materialName:r.materialName||r.material||"時間だけ入力"
+  }));
+
   state.materials=(state.materials||[]).map(m=>({
-    id:m.id||uuid(),
-    person:m.person||m.user||"尚子",
+    id:m.id||uid(),
+    person:normalizePerson(m.person||m.user),
     subject:m.subject||"その他",
     name:m.name||m.title||"教材",
     total:Number(m.total||0),
@@ -398,24 +526,17 @@ function load(){
     exam:m.exam||m.examDate||m.end||todayStr()
   }));
 
-  state.records=(state.records||[]).map(r=>({
-    id:r.id||uuid(),
-    person:r.person||r.user||"尚子",
-    subject:r.subject||"その他",
-    minutes:Number(r.minutes||r.time||0),
-    date:r.date||todayStr(),
-    memo:r.memo||"",
-    materialId:r.materialId||null,
-    materialName:r.materialName||r.material||"時間だけ入力"
-  }));
-
   save();
+}
+
+function save(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 }
 
 function showTab(id,btn){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   document.getElementById(id).classList.add("active");
-  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".main-tabs button").forEach(b=>b.classList.remove("active"));
   btn.classList.add("active");
   renderAll();
 }
@@ -423,26 +544,28 @@ function showTab(id,btn){
 function fillSelect(id,items){
   const el=document.getElementById(id);
   el.innerHTML="";
-  items.forEach(item=>{
+  items.forEach(x=>{
     const op=document.createElement("option");
-    op.value=item;
-    op.textContent=item;
+    op.value=x;
+    op.textContent=x;
     el.appendChild(op);
   });
 }
 
-function setupForms(){
-  ["materialPerson","quickPerson"].forEach(id=>fillSelect(id,PEOPLE));
-  ["materialSubject","quickSubject"].forEach(id=>fillSelect(id,SUBJECTS));
-  ["materialStart","materialEnd","materialExam","materialRecordDate","quickDate"].forEach(id=>{
-    document.getElementById(id).value=todayStr();
-  });
+function initForms(){
+  ["quickPerson","materialPerson"].forEach(id=>fillSelect(id,PEOPLE));
+  ["quickSubject","materialSubject"].forEach(id=>fillSelect(id,SUBJECTS));
+  document.getElementById("quickDate").value=todayStr();
+  document.getElementById("materialRecordDate").value=todayStr();
+  document.getElementById("materialStart").value=todayStr();
+  document.getElementById("materialEnd").value=todayStr();
+  document.getElementById("materialExam").value=todayStr();
 }
 
-function renderPersonFilter(area,key){
-  const el=document.getElementById(area);
-  const values=[["all","全員"],...PEOPLE.map(p=>[p,p])];
-  el.innerHTML=values.map(([v,label])=>
+function renderPersonFilter(elId,key){
+  const el=document.getElementById(elId);
+  const items=[["all","全員"],...PEOPLE.map(p=>[p,p])];
+  el.innerHTML=items.map(([v,label])=>
     `<button class="${filters[key]===v?'active':''}" onclick="setFilter('${key}','${v}')">${label}</button>`
   ).join("");
 }
@@ -456,31 +579,6 @@ function personOk(person,key){
   return filters[key]==="all" || person===filters[key];
 }
 
-function addMaterial(){
-  const name=document.getElementById("materialName").value.trim();
-  const total=Number(document.getElementById("materialTotal").value);
-  if(!name){alert("教材名を入力してください");return;}
-  if(!total){alert("総量を入力してください");return;}
-
-  state.materials.push({
-    id:uuid(),
-    person:document.getElementById("materialPerson").value,
-    subject:document.getElementById("materialSubject").value,
-    name,
-    total,
-    unit:document.getElementById("materialUnit").value.trim(),
-    start:document.getElementById("materialStart").value,
-    end:document.getElementById("materialEnd").value,
-    exam:document.getElementById("materialExam").value
-  });
-
-  document.getElementById("materialName").value="";
-  document.getElementById("materialTotal").value="";
-  document.getElementById("materialUnit").value="";
-  save();
-  renderAll();
-}
-
 function refreshMaterialSelect(){
   const el=document.getElementById("recordMaterial");
   el.innerHTML="";
@@ -492,36 +590,11 @@ function refreshMaterialSelect(){
   });
 }
 
-function addMaterialRecord(){
-  const materialId=document.getElementById("recordMaterial").value;
-  const m=state.materials.find(x=>x.id===materialId);
-  const minutes=Number(document.getElementById("materialMinutes").value);
-  if(!m){alert("教材を登録してください");return;}
-  if(!minutes){alert("勉強時間を入力してください");return;}
-
-  state.records.push({
-    id:uuid(),
-    person:m.person,
-    subject:m.subject||"その他",
-    minutes,
-    date:document.getElementById("materialRecordDate").value,
-    memo:document.getElementById("materialMemo").value,
-    materialId:m.id,
-    materialName:m.name
-  });
-
-  document.getElementById("materialMinutes").value="";
-  document.getElementById("materialMemo").value="";
-  save();
-  renderAll();
-}
-
 function addQuickRecord(){
   const minutes=Number(document.getElementById("quickMinutes").value);
   if(!minutes){alert("勉強時間を入力してください");return;}
-
   state.records.push({
-    id:uuid(),
+    id:uid(),
     person:document.getElementById("quickPerson").value,
     subject:document.getElementById("quickSubject").value,
     minutes,
@@ -530,39 +603,90 @@ function addQuickRecord(){
     materialId:null,
     materialName:"時間だけ入力"
   });
-
   document.getElementById("quickMinutes").value="";
   document.getElementById("quickMemo").value="";
   save();
   renderAll();
 }
 
+function addMaterial(){
+  const name=document.getElementById("materialName").value.trim();
+  const total=Number(document.getElementById("materialTotal").value);
+  if(!name || !total){alert("教材名と総量を入力してください");return;}
+  state.materials.push({
+    id:uid(),
+    person:document.getElementById("materialPerson").value,
+    subject:document.getElementById("materialSubject").value,
+    name,
+    total,
+    unit:document.getElementById("materialUnit").value.trim(),
+    start:document.getElementById("materialStart").value,
+    end:document.getElementById("materialEnd").value,
+    exam:document.getElementById("materialExam").value
+  });
+  document.getElementById("materialName").value="";
+  document.getElementById("materialTotal").value="";
+  document.getElementById("materialUnit").value="";
+  save();
+  renderAll();
+}
+
+function addMaterialRecord(){
+  const id=document.getElementById("recordMaterial").value;
+  const m=state.materials.find(x=>x.id===id);
+  const minutes=Number(document.getElementById("materialMinutes").value);
+  if(!m){alert("教材を登録してください");return;}
+  if(!minutes){alert("勉強時間を入力してください");return;}
+  state.records.push({
+    id:uid(),
+    person:m.person,
+    subject:m.subject||"その他",
+    minutes,
+    date:document.getElementById("materialRecordDate").value,
+    memo:document.getElementById("materialMemo").value,
+    materialId:m.id,
+    materialName:m.name
+  });
+  document.getElementById("materialMinutes").value="";
+  document.getElementById("materialMemo").value="";
+  save();
+  renderAll();
+}
+
 function sumMinutes(records){
-  return records.reduce((a,r)=>a+Number(r.minutes||0),0);
+  return records.reduce((a,b)=>a+Number(b.minutes||0),0);
+}
+
+function inRange(dateStr){
+  if(currentRange==="all")return true;
+  const d=new Date(dateStr);
+  const now=new Date();
+  const diff=(now-d)/(1000*60*60*24);
+  if(currentRange==="week")return diff>=0 && diff<7;
+  if(currentRange==="month")return diff>=0 && diff<31;
+  if(currentRange==="year")return diff>=0 && diff<366;
+  return true;
 }
 
 function dateKey(d){
   return d.toISOString().slice(0,10);
 }
 
-function getPlansForDate(dateStr,key){
-  const target=new Date(dateStr);
+function getPlansForDate(dateStr,key="calendar"){
   const plans=[];
   state.materials.filter(m=>personOk(m.person,key)).forEach(m=>{
     const start=new Date(m.start);
     const end=new Date(m.end);
+    const target=new Date(dateStr);
     if(target<start||target>end)return;
-
     const days=Math.max(1,Math.floor((end-start)/(1000*60*60*24))+1);
     const per=Math.ceil(m.total/days);
-    const index=Math.floor((target-start)/(1000*60*60*24));
-    const from=index*per+1;
-    const to=Math.min(m.total,(index+1)*per);
+    const dayIndex=Math.floor((target-start)/(1000*60*60*24));
+    const from=dayIndex*per+1;
+    const to=Math.min(m.total,(dayIndex+1)*per);
     if(from<=m.total){
       plans.push({
         person:m.person,
-        subject:m.subject,
-        name:m.name,
         text:`${m.person}｜${m.subject} ${m.name} ${from}〜${to}${m.unit}`
       });
     }
@@ -570,25 +694,37 @@ function getPlansForDate(dateStr,key){
   return plans;
 }
 
+function renderDashboard(){
+  const today=todayStr();
+  const todayMin=sumMinutes(state.records.filter(r=>r.date===today));
+  const weekMin=sumMinutes(state.records.filter(r=>{
+    const diff=(new Date()-new Date(r.date))/(1000*60*60*24);
+    return diff>=0&&diff<7;
+  }));
+  const monthMin=sumMinutes(state.records.filter(r=>{
+    const diff=(new Date()-new Date(r.date))/(1000*60*60*24);
+    return diff>=0&&diff<31;
+  }));
+  const nextExam=state.materials
+    .filter(m=>new Date(m.exam)>=new Date(today))
+    .sort((a,b)=>new Date(a.exam)-new Date(b.exam))[0];
+  const remain=nextExam?Math.ceil((new Date(nextExam.exam)-new Date(today))/(1000*60*60*24)):"-";
+  document.getElementById("dashboard").innerHTML=`
+    <div class="stat">今日<br><strong>${Math.round(todayMin/60*10)/10}h</strong></div>
+    <div class="stat">今週<br><strong>${Math.round(weekMin/60*10)/10}h</strong></div>
+    <div class="stat">今月<br><strong>${Math.round(monthMin/60*10)/10}h</strong></div>
+    <div class="stat">次の試験まで<br><strong>${remain}</strong>日</div>
+  `;
+}
+
 function renderToday(){
   const today=todayStr();
-  const recs=state.records.filter(r=>r.date===today && personOk(r.person,"today"));
   const plans=getPlansForDate(today,"today");
-
-  const todayMin=sumMinutes(recs);
-  const completedPeople=[...new Set(recs.map(r=>r.person))].length;
-
-  document.getElementById("todaySummary").innerHTML=`
-    <div class="card">今日の実績<br><strong>${Math.round(todayMin/60*10)/10}h</strong></div>
-    <div class="card">予定数<br><strong>${plans.length}</strong></div>
-    <div class="card">記録した人<br><strong>${completedPeople}</strong></div>
-  `;
-
+  const recs=state.records.filter(r=>r.date===today && personOk(r.person,"today"));
   if(plans.length===0 && recs.length===0){
     document.getElementById("todayTasks").innerHTML="<p>今日の予定・実績はまだありません。</p>";
     return;
   }
-
   let html="";
   plans.forEach(p=>{
     html+=`<div class="task"><strong>予定</strong><br>${p.text}</div>`;
@@ -600,24 +736,82 @@ function renderToday(){
 }
 
 function renderMaterialList(){
-  const list=state.materials.filter(m=>personOk(m.person,"materials"));
+  const list=state.materials.filter(m=>personOk(m.person,"material"));
   if(list.length===0){
     document.getElementById("materialList").innerHTML="<p>教材はまだ登録されていません。</p>";
     return;
   }
-
   let html='<div class="table-wrap"><table><tr><th>名前</th><th>教科</th><th>教材</th><th>期間</th><th>試験日</th></tr>';
   list.forEach(m=>{
-    html+=`<tr>
-      <td>${m.person}</td>
-      <td>${m.subject}</td>
-      <td>${m.name}<br><span class="small">${m.total}${m.unit}</span></td>
-      <td>${m.start}<br>〜${m.end}</td>
-      <td>${m.exam}</td>
-    </tr>`;
+    html+=`
+      <tr>
+        <td>${m.person}</td>
+        <td>${m.subject}</td>
+        <td>${m.name}<br><span class="small">${m.total}${m.unit}</span></td>
+        <td>${m.start}<br>〜${m.end}</td>
+        <td>${m.exam}</td>
+      </tr>
+    `;
   });
   html+="</table></div>";
   document.getElementById("materialList").innerHTML=html;
+}
+
+function renderSubjectGraph(){
+  const records=state.records.filter(r=>personOk(r.person,"graph") && inRange(r.date));
+  const totals={};
+  SUBJECTS.forEach(s=>totals[s]=0);
+  records.forEach(r=>totals[r.subject||"その他"]+=Number(r.minutes||0));
+  const max=Math.max(...Object.values(totals),1);
+  let html='<div class="table-wrap"><table><tr><th>教科</th><th>時間</th><th>グラフ</th></tr>';
+  SUBJECTS.forEach(s=>{
+    const h=Math.round(totals[s]/60*10)/10;
+    const w=Math.round(totals[s]/max*100);
+    html+=`<tr><td>${s}</td><td>${h}h</td><td><div class="bar-wrap"><div class="bar" style="width:${w}%">${h}h</div></div></td></tr>`;
+  });
+  html+="</table></div>";
+  document.getElementById("subjectGraph").innerHTML=html;
+
+  const peopleTotals={};
+  PEOPLE.forEach(p=>peopleTotals[p]=0);
+  records.forEach(r=>peopleTotals[r.person]=(peopleTotals[r.person]||0)+Number(r.minutes||0));
+  const maxP=Math.max(...Object.values(peopleTotals),1);
+  let phtml='<div class="table-wrap"><table><tr><th>名前</th><th>時間</th><th>グラフ</th></tr>';
+  PEOPLE.forEach(p=>{
+    const h=Math.round((peopleTotals[p]||0)/60*10)/10;
+    const w=Math.round((peopleTotals[p]||0)/maxP*100);
+    phtml+=`<tr><td>${p}</td><td>${h}h</td><td><div class="bar-wrap"><div class="bar" style="width:${w}%">${h}h</div></div></td></tr>`;
+  });
+  phtml+="</table></div>";
+  document.getElementById("personGraph").innerHTML=phtml;
+}
+
+function setRange(r){
+  currentRange=r;
+  renderAll();
+}
+
+function renderCalendar(){
+  const y=calendarDate.getFullYear();
+  const m=calendarDate.getMonth();
+  document.getElementById("calendarTitle").textContent=`${y}年${m+1}月`;
+  const last=new Date(y,m+1,0);
+  const cal=document.getElementById("calendar");
+  cal.innerHTML="";
+  for(let i=1;i<=last.getDate();i++){
+    const d=new Date(y,m,i);
+    const key=dateKey(d);
+    const recs=state.records.filter(r=>r.date===key && personOk(r.person,"calendar"));
+    const plans=getPlansForDate(key,"calendar");
+    const doneMin=sumMinutes(recs);
+    const todayClass=key===todayStr()?"today":"";
+    let html=`<div class="day ${todayClass}"><div class="day-num">${i}</div>`;
+    plans.slice(0,3).forEach(p=>html+=`<div class="plan">予定：${p.text}</div>`);
+    recs.slice(0,3).forEach(r=>html+=`<div class="done">実績：${r.person}｜${r.subject} ${r.minutes}分</div>`);
+    if(doneMin>0)html+=`<div class="small">合計 ${doneMin}分</div>`;
+    html+="</div>";
+    cal.innerHTML+=html;
+  }
 }
 
 function moveMonth(n){
@@ -626,134 +820,60 @@ function moveMonth(n){
   renderCalendar();
 }
 
-function renderCalendar(){
-  const y=calendarDate.getFullYear();
-  const m=calendarDate.getMonth();
-  document.getElementById("calendarTitle").textContent=`${y}年${m+1}月`;
-
-  const last=new Date(y,m+1,0);
-  let html="";
-  for(let i=1;i<=last.getDate();i++){
-    const d=new Date(y,m,i);
-    const key=dateKey(d);
-    const plans=getPlansForDate(key,"calendar");
-    const recs=state.records.filter(r=>r.date===key && personOk(r.person,"calendar"));
-    const todayClass=key===todayStr()?"today":"";
-
-    html+=`<div class="day ${todayClass}"><div class="day-num">${i}</div>`;
-    plans.slice(0,3).forEach(p=>html+=`<div class="plan">${p.text}</div>`);
-    recs.slice(0,3).forEach(r=>html+=`<div class="done-item">${r.person}｜${r.subject} ${r.minutes}分</div>`);
-    if(plans.length>3||recs.length>3)html+=`<div class="small">他 ${plans.length+recs.length-3}件</div>`;
-    html+="</div>";
-  }
-  document.getElementById("calendarGrid").innerHTML=html;
-}
-
-function inGraphRange(dateStr){
-  if(graphRange==="all")return true;
-  const d=new Date(dateStr);
-  const now=new Date();
-  const diff=(now-d)/(1000*60*60*24);
-  if(graphRange==="week")return diff>=0 && diff<7;
-  if(graphRange==="month")return diff>=0 && diff<31;
-  if(graphRange==="year")return diff>=0 && diff<366;
-  return true;
-}
-
-function setGraphRange(r){
-  graphRange=r;
-  renderGraph();
-}
-
-function renderBars(target,items){
-  const max=Math.max(...items.map(x=>x.value),1);
-  let html='<div class="table-wrap"><table>';
-  items.forEach(x=>{
-    const hour=Math.round(x.value/60*10)/10;
-    const w=Math.round(x.value/max*100);
-    html+=`<tr>
-      <td style="width:90px">${x.label}</td>
-      <td style="width:70px">${hour}h</td>
-      <td><div class="bar-wrap"><div class="bar" style="width:${w}%">${hour}h</div></div></td>
-    </tr>`;
-  });
-  html+="</table></div>";
-  document.getElementById(target).innerHTML=html;
-}
-
-function renderGraph(){
-  const recs=state.records.filter(r=>personOk(r.person,"graph") && inGraphRange(r.date));
-
-  const subjectItems=SUBJECTS.map(s=>({
-    label:s,
-    value:sumMinutes(recs.filter(r=>(r.subject||"その他")===s))
-  }));
-  renderBars("subjectGraph",subjectItems);
-
-  const personItems=PEOPLE.map(p=>({
-    label:p,
-    value:sumMinutes(recs.filter(r=>r.person===p))
-  }));
-  renderBars("personGraph",personItems);
-}
-
-function renderExam(){
+function renderExamMode(){
   const today=new Date(todayStr());
   const list=state.materials.filter(m=>personOk(m.person,"exam"));
-
   if(list.length===0){
-    document.getElementById("examList").innerHTML="<p>教材がまだありません。</p>";
+    document.getElementById("examMode").innerHTML="<p>教材はまだ登録されていません。</p>";
     return;
   }
-
-  let html='<div class="table-wrap"><table><tr><th>名前</th><th>教科</th><th>教材</th><th>試験まで</th><th>実績</th><th>状況</th></tr>';
+  let html='<div class="table-wrap"><table><tr><th>名前</th><th>教材</th><th>教科</th><th>試験まで</th><th>実績</th><th>状況</th></tr>';
   list.forEach(m=>{
     const exam=new Date(m.exam);
     const remain=Math.ceil((exam-today)/(1000*60*60*24));
     const recs=state.records.filter(r=>r.materialId===m.id);
     const done=sumMinutes(recs);
-    const start=new Date(m.start);
-    const end=new Date(m.end);
-    const totalDays=Math.max(1,Math.floor((end-start)/(1000*60*60*24))+1);
-    const passed=Math.max(0,Math.floor((today-start)/(1000*60*60*24))+1);
-    const expectedRate=Math.min(100,Math.round(passed/totalDays*100));
-    const actualRate=Math.min(100,Math.round(done/Math.max(m.total*10,1)*100));
-    const status=actualRate+10<expectedRate?"遅れ気味":"順調";
-
-    html+=`<tr>
-      <td>${m.person}</td>
-      <td>${m.subject}</td>
-      <td>${m.name}</td>
-      <td>${remain}日</td>
-      <td>${Math.round(done/60*10)/10}h</td>
-      <td>${status}<br><span class="small">達成率 ${actualRate}%</span></td>
-    </tr>`;
+    const totalTarget=m.total*10;
+    const rate=Math.min(100,Math.round(done/Math.max(totalTarget,1)*100));
+    let status="順調";
+    if(rate<40)status="遅れ気味";
+    if(rate<20)status="危険";
+    html+=`
+      <tr>
+        <td>${m.person}</td>
+        <td>${m.name}</td>
+        <td>${m.subject}</td>
+        <td>${remain}日</td>
+        <td>${Math.round(done/60*10)/10}h</td>
+        <td>${status} ${rate}%</td>
+      </tr>
+    `;
   });
   html+="</table></div>";
-  document.getElementById("examList").innerHTML=html;
+  document.getElementById("examMode").innerHTML=html;
 }
 
 function renderRecordList(){
-  const list=[...state.records]
+  const sorted=[...state.records]
     .filter(r=>personOk(r.person,"manage"))
     .sort((a,b)=>new Date(b.date)-new Date(a.date));
-
-  if(list.length===0){
+  if(sorted.length===0){
     document.getElementById("recordList").innerHTML="<p>記録はまだありません。</p>";
     return;
   }
-
   let html='<div class="table-wrap"><table><tr><th>日付</th><th>名前</th><th>教科</th><th>教材</th><th>時間</th><th>メモ</th><th>削除</th></tr>';
-  list.forEach(r=>{
-    html+=`<tr>
-      <td>${r.date}</td>
-      <td>${r.person}</td>
-      <td>${r.subject||"その他"}</td>
-      <td>${r.materialName||"時間だけ入力"}</td>
-      <td>${r.minutes}分</td>
-      <td>${r.memo||""}</td>
-      <td><button class="btn-red btn-small" onclick="deleteRecord('${r.id}')">削除</button></td>
-    </tr>`;
+  sorted.forEach(r=>{
+    html+=`
+      <tr>
+        <td>${r.date}</td>
+        <td>${r.person}</td>
+        <td>${r.subject||"その他"}</td>
+        <td>${r.materialName||"時間だけ入力"}</td>
+        <td>${r.minutes}分</td>
+        <td>${r.memo||""}</td>
+        <td><button class="btn-red btn-small" onclick="deleteRecord('${r.id}')">削除</button></td>
+      </tr>
+    `;
   });
   html+="</table></div>";
   document.getElementById("recordList").innerHTML=html;
@@ -771,26 +891,27 @@ function exportData(){
 }
 
 function renderAll(){
-  renderPersonFilter("todayFilter","today");
-  renderPersonFilter("materialsFilter","materials");
-  renderPersonFilter("calendarFilter","calendar");
-  renderPersonFilter("graphFilter","graph");
-  renderPersonFilter("examFilter","exam");
-  renderPersonFilter("manageFilter","manage");
-
+  renderPersonFilter("todayPersonFilter","today");
+  renderPersonFilter("materialPersonFilter","material");
+  renderPersonFilter("calendarPersonFilter","calendar");
+  renderPersonFilter("graphPersonFilter","graph");
+  renderPersonFilter("examPersonFilter","exam");
+  renderPersonFilter("managePersonFilter","manage");
   refreshMaterialSelect();
+  renderDashboard();
   renderToday();
   renderMaterialList();
+  renderSubjectGraph();
   renderCalendar();
-  renderGraph();
-  renderExam();
+  renderExamMode();
   renderRecordList();
 }
 
 load();
-setupForms();
+initForms();
 renderAll();
 </script>
+
 </body>
 </html>
 ```
