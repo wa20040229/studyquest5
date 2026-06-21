@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StudyQuest Ver8.6</title>
+<title>StudyQuest Ver8.7</title>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -339,7 +339,7 @@ textarea{resize:vertical}
 
 <body>
 <header>
-  <h1>StudyQuest Ver8.6</h1>
+  <h1>StudyQuest Ver8.7</h1>
   <p>今日やること・教材管理・教科別グラフ・カレンダー</p>
 </header>
 
@@ -555,6 +555,7 @@ function normalizePerson(p){
 function load(){
   const saved=localStorage.getItem(STORAGE_KEY);
   if(saved){try{state=JSON.parse(saved)}catch(e){state={records:[],materials:[]}}}
+
   state.records=(state.records||[]).map(r=>({
     id:r.id||uid(),
     person:normalizePerson(r.person||r.user),
@@ -565,6 +566,7 @@ function load(){
     materialId:r.materialId||null,
     materialName:r.materialName||r.material||"時間だけ入力"
   }));
+
   state.materials=(state.materials||[]).map(m=>({
     id:m.id||uid(),
     person:normalizePerson(m.person||m.user),
@@ -576,6 +578,7 @@ function load(){
     end:m.end||m.endDate||m.exam||todayStr(),
     exam:m.exam||m.examDate||m.end||todayStr()
   }));
+
   save();
 }
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
@@ -751,23 +754,39 @@ function inRange(dateStr){
   return true;
 }
 function dateKey(d){return d.toISOString().slice(0,10)}
+function calcInclusiveDays(startStr,endStr){
+  const start=new Date(startStr);
+  const end=new Date(endStr);
+  return Math.max(1,Math.floor((end-start)/(1000*60*60*24))+1);
+}
+function calcPerDay(material){
+  const days=calcInclusiveDays(material.start,material.end);
+  return Math.ceil(Number(material.total||0)/days);
+}
 function getDayItems(dateStr,key="calendar"){
   const plans=[];
   const exams=[];
   const recs=state.records.filter(r=>r.date===dateStr && personOk(r.person,key));
+
   state.materials.filter(m=>personOk(m.person,key)).forEach(m=>{
     if(m.exam===dateStr)exams.push(`${m.person}｜${m.subject} ${m.name}`);
+
     const start=new Date(m.start);
     const end=new Date(m.end);
     const target=new Date(dateStr);
     if(target<start||target>end)return;
-    const days=Math.max(1,Math.floor((end-start)/(1000*60*60*24))+1);
+
+    const days=calcInclusiveDays(m.start,m.end);
     const per=Math.ceil(m.total/days);
     const dayIndex=Math.floor((target-start)/(1000*60*60*24));
     const from=dayIndex*per+1;
     const to=Math.min(m.total,(dayIndex+1)*per);
-    if(from<=m.total)plans.push(`${m.person}｜${m.subject} ${m.name} ${from}〜${to}${m.unit}`);
+
+    if(from<=m.total){
+      plans.push(`${m.person}｜${m.subject} ${m.name} ${from}〜${to}${m.unit}`);
+    }
   });
+
   return {plans,recs,exams};
 }
 function renderDashboard(){
@@ -787,6 +806,7 @@ function renderDashboard(){
     .filter(m=>new Date(m.exam)>=new Date(today))
     .sort((a,b)=>new Date(a.exam)-new Date(b.exam))[0];
   const remain=nextExam?Math.ceil((new Date(nextExam.exam)-new Date(today))/(1000*60*60*24)):"-";
+
   document.getElementById("dashboard").innerHTML=`
     <div class="stat">今日<br><strong>${Math.round(todayMin/60*10)/10}h</strong></div>
     <div class="stat">今週<br><strong>${Math.round(weekMin/60*10)/10}h</strong></div>
@@ -800,6 +820,7 @@ function renderToday(){
     document.getElementById("todayTasks").innerHTML="<p>今日の予定・実績はまだありません。</p>";
     return;
   }
+
   let html="";
   items.exams.forEach(x=>html+=`<div class="task"><strong>試験日</strong><br>${x}</div>`);
   items.plans.forEach(x=>html+=`<div class="task"><strong>予定</strong><br>${x}</div>`);
@@ -814,13 +835,20 @@ function renderMaterialList(){
     document.getElementById("materialList").innerHTML="<p>教材はまだ登録されていません。</p>";
     return;
   }
+
   let html='<div class="table-wrap"><table><tr><th>名前</th><th>教科</th><th>教材</th><th>期間</th><th>試験日</th><th>操作</th></tr>';
   list.forEach(m=>{
+    const days=calcInclusiveDays(m.start,m.end);
+    const perDay=calcPerDay(m);
     html+=`
       <tr>
         <td>${m.person}</td>
         <td>${m.subject}</td>
-        <td>${m.name}<br><span class="small">${m.total}${m.unit}</span></td>
+        <td>
+          ${m.name}<br>
+          <span class="small">総量：${m.total}${m.unit}</span><br>
+          <span class="small">1日あたり：${perDay}${m.unit} / ${days}日</span>
+        </td>
         <td>${m.start}<br>〜${m.end}</td>
         <td>${m.exam}</td>
         <td><button class="btn-orange btn-small" onclick="startEditMaterial('${m.id}')">修正</button></td>
@@ -836,6 +864,7 @@ function renderSubjectGraph(){
   SUBJECTS.forEach(s=>totals[s]=0);
   records.forEach(r=>totals[r.subject||"その他"]+=Number(r.minutes||0));
   const max=Math.max(...Object.values(totals),1);
+
   let html='<div class="table-wrap"><table><tr><th>教科</th><th>時間</th><th>グラフ</th></tr>';
   SUBJECTS.forEach(s=>{
     const h=Math.round(totals[s]/60*10)/10;
@@ -849,6 +878,7 @@ function renderSubjectGraph(){
   PEOPLE.forEach(p=>peopleTotals[p]=0);
   records.forEach(r=>peopleTotals[r.person]=(peopleTotals[r.person]||0)+Number(r.minutes||0));
   const maxP=Math.max(...Object.values(peopleTotals),1);
+
   let phtml='<div class="table-wrap"><table><tr><th>名前</th><th>時間</th><th>グラフ</th></tr>';
   PEOPLE.forEach(p=>{
     const h=Math.round((peopleTotals[p]||0)/60*10)/10;
@@ -878,6 +908,7 @@ function renderMonthCalendar(y,m){
   const cal=document.getElementById("calendar");
   cal.innerHTML="";
   const start=new Date(y,m,1-new Date(y,m,1).getDay());
+
   for(let i=0;i<42;i++){
     const d=new Date(start);
     d.setDate(start.getDate()+i);
@@ -887,6 +918,7 @@ function renderMonthCalendar(y,m){
     const outside=d.getMonth()!==m?"outside":"";
     const dow=d.getDay();
     const dowClass=dow===0?"sun":dow===6?"sat":"";
+
     let html=`<div class="day ${todayClass} ${outside} ${dowClass}"><div class="day-num">${d.getDate()}</div>`;
     items.exams.slice(0,1).forEach(x=>html+=`<div class="exam-mark">試験：${x}</div>`);
     items.plans.slice(0,2).forEach(x=>html+=`<div class="plan">${x}</div>`);
@@ -907,6 +939,7 @@ function renderListCalendar(y,m){
     const dow=d.getDay();
     const dowClass=dow===0?"sun":dow===6?"sat":"";
     const items=getDayItems(key,"calendar");
+
     html+=`<div class="list-row"><div class="day-list-date ${dowClass}">${i}日（${["日","月","火","水","木","金","土"][dow]}）</div>`;
     if(items.exams.length===0 && items.plans.length===0 && items.recs.length===0){
       html+=`<div class="small">予定・実績なし</div>`;
@@ -930,6 +963,7 @@ function renderExamMode(){
     document.getElementById("examMode").innerHTML="<p>教材はまだ登録されていません。</p>";
     return;
   }
+
   let html='<div class="table-wrap"><table><tr><th>名前</th><th>教材</th><th>教科</th><th>試験まで</th><th>実績</th><th>状況</th></tr>';
   list.forEach(m=>{
     const exam=new Date(m.exam);
@@ -941,6 +975,7 @@ function renderExamMode(){
     let status="順調";
     if(rate<40)status="遅れ気味";
     if(rate<20)status="危険";
+
     html+=`
       <tr>
         <td>${m.person}</td>
@@ -963,6 +998,7 @@ function renderRecordList(){
     document.getElementById("recordList").innerHTML="<p>記録はまだありません。</p>";
     return;
   }
+
   let html='<div class="table-wrap"><table><tr><th>日付</th><th>名前</th><th>教科</th><th>教材</th><th>時間</th><th>メモ</th><th>削除</th></tr>';
   sorted.forEach(r=>{
     html+=`
@@ -1011,4 +1047,3 @@ renderAll();
 </script>
 </body>
 </html>
-```
