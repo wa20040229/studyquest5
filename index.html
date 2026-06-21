@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StudyQuest Ver8.8</title>
+<title>StudyQuest Ver8.9</title>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -321,6 +321,43 @@ th,td{
   white-space:nowrap;
 }
 textarea{resize:vertical}
+
+.ranking-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+}
+.rank-card{
+  background:linear-gradient(180deg,#1f2937,#0b1220);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+}
+.rank-title{
+  font-weight:900;
+  color:#e0f2fe;
+  margin-bottom:4px;
+}
+.rank-badge{
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#0284c7;
+  color:white;
+  font-size:12px;
+  font-weight:900;
+  margin-bottom:6px;
+}
+.import-warning{
+  background:#450a0a;
+  border:1px solid #ef4444;
+  color:#fee2e2;
+  border-radius:12px;
+  padding:10px;
+  margin:10px 0;
+  font-size:13px;
+}
+
 @media(max-width:700px){
   header h1{font-size:23px}
   .container{padding:10px}
@@ -339,7 +376,7 @@ textarea{resize:vertical}
 
 <body>
 <header>
-  <h1>StudyQuest Ver8.8</h1>
+  <h1>StudyQuest Ver8.9</h1>
   <p>今日やること・教材管理・教科別グラフ・カレンダー</p>
 </header>
 
@@ -366,6 +403,12 @@ textarea{resize:vertical}
     <h2>ダッシュボード</h2>
     <div id="dashboardPersonFilter" class="person-filter"></div>
     <div class="grid" id="dashboard"></div>
+  </div>
+
+  <div class="box">
+    <h2>レインボー6風ランキング</h2>
+    <p class="small">全期間の勉強時間でランキングします。</p>
+    <div id="rainbowRanking" class="ranking-grid"></div>
   </div>
 </section>
 
@@ -521,8 +564,13 @@ textarea{resize:vertical}
 
   <div class="box">
     <h2>データ管理</h2>
-    <button class="btn-gray" onclick="exportData()">バックアップを表示</button>
-    <textarea id="backupArea" rows="6" placeholder="ここにバックアップが表示されます"></textarea>
+    <button class="btn-gray" onclick="exportData()">エクスポート用データを表示</button>
+    <textarea id="backupArea" rows="7" placeholder="ここにエクスポート用データが表示されます"></textarea>
+
+    <h3>インポート</h3>
+    <div class="import-warning">インポートすると、現在のデータは貼り付けたデータで置き換わります。必要なら先にエクスポートしてください。</div>
+    <textarea id="importArea" rows="7" placeholder="ここにバックアップデータを貼り付けてください"></textarea>
+    <button class="btn-orange" onclick="importData()">インポートする</button>
   </div>
 </section>
 
@@ -821,6 +869,37 @@ function getDayItems(dateStr,key="calendar"){
 
   return {plans,recs,exams};
 }
+function getRankName(index){
+  const names=["ACE","THERMITE","ASH","SLEDGE","ROOK","RECRUIT"];
+  return names[index]||"RECRUIT";
+}
+function renderRainbowRanking(){
+  const totals=PEOPLE.map(p=>({
+    person:p,
+    minutes:sumMinutes(state.records.filter(r=>r.person===p))
+  })).sort((a,b)=>b.minutes-a.minutes);
+
+  if(totals.every(x=>x.minutes===0)){
+    document.getElementById("rainbowRanking").innerHTML='<p class="small">まだランキング対象の記録がありません。</p>';
+    return;
+  }
+
+  let html="";
+  totals.forEach((x,i)=>{
+    const h=Math.round(x.minutes/60*10)/10;
+    const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"";
+    html+=`
+      <div class="rank-card">
+        <div class="rank-badge">${medal} ${getRankName(i)}</div>
+        <div class="rank-title">${i+1}位　${x.person}</div>
+        <div><strong>${h}h</strong></div>
+        <div class="small">全期間の合計勉強時間</div>
+      </div>
+    `;
+  });
+  document.getElementById("rainbowRanking").innerHTML=html;
+}
+
 function renderDashboard(){
   const records=filterByPerson(state.records,"dashboard");
   const materials=filterByPerson(state.materials,"dashboard");
@@ -1056,6 +1135,62 @@ function deleteRecord(id){
 function exportData(){
   document.getElementById("backupArea").value=JSON.stringify(state,null,2);
 }
+
+function importData(){
+  const text=document.getElementById("importArea").value.trim();
+  if(!text){
+    alert("インポートするデータを貼り付けてください");
+    return;
+  }
+
+  let data;
+  try{
+    data=JSON.parse(text);
+  }catch(e){
+    alert("JSON形式が正しくありません");
+    return;
+  }
+
+  if(!data || !Array.isArray(data.records) || !Array.isArray(data.materials)){
+    alert("StudyQuestのバックアップデータではない可能性があります");
+    return;
+  }
+
+  if(!confirm("現在のデータをインポートデータで置き換えます。よろしいですか？")){
+    return;
+  }
+
+  state=data;
+  loadImportedData();
+  save();
+  renderAll();
+  alert("インポートしました");
+}
+
+function loadImportedData(){
+  state.records=(state.records||[]).map(r=>({
+    id:r.id||uid(),
+    person:normalizePerson(r.person||r.user),
+    subject:r.subject||"その他",
+    minutes:Number(r.minutes||r.time||0),
+    date:r.date||todayStr(),
+    memo:r.memo||"",
+    materialId:r.materialId||null,
+    materialName:r.materialName||r.material||"時間だけ入力"
+  }));
+
+  state.materials=(state.materials||[]).map(m=>({
+    id:m.id||uid(),
+    person:normalizePerson(m.person||m.user),
+    subject:m.subject||"その他",
+    name:m.name||m.title||"教材",
+    total:Number(m.total||0),
+    unit:m.unit||"",
+    start:m.start||m.startDate||todayStr(),
+    end:m.end||m.endDate||m.exam||todayStr(),
+    exam:m.exam||m.examDate||m.end||todayStr()
+  }));
+}
 function renderAll(){
   renderPersonFilter("todayPersonFilter","today");
   renderPersonFilter("dashboardPersonFilter","dashboard");
@@ -1067,6 +1202,7 @@ function renderAll(){
   refreshMaterialSelect();
   renderToday();
   renderDashboard();
+  renderRainbowRanking();
   renderMaterialList();
   renderSubjectGraph();
   renderCalendar();
