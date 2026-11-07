@@ -4,7 +4,7 @@
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StudyQuest Ver10</title>
+<title>StudyQuest 期末試験</title>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -431,6 +431,14 @@ input[type="file"]{
   .plan,.done,.exam-mark{font-size:8px;padding:1px 2px;-webkit-line-clamp:1}
   .week-header div{font-size:12px;padding:4px 0}
 }
+.final-summary,.final-check{display:flex;flex-wrap:wrap;gap:.6rem 1rem;align-items:center}
+.final-task{margin-top:1rem;padding:1rem;border:1px solid #d6d9e7;border-radius:12px}
+.final-task h3{margin:.15rem 0}.final-task h3 small{font-size:.75em}
+.final-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;margin:.5rem 0}
+.final-fields label{min-width:0}.final-fields input,.final-fields select{width:100%;min-width:0}
+.final-tick{display:flex;align-items:center;gap:.4rem;margin:.55rem 0}
+.final-tick input{width:auto;margin:0}
+.final-task summary,#finalPlanner summary{cursor:pointer;margin:.6rem 0}
 </style>
 </head>
 
@@ -774,100 +782,14 @@ input[type="file"]{
 
 <section id="examTab" class="tab">
   <div class="box">
-    <h2>試験モード</h2>
-    <div id="examPersonFilter" class="person-filter"><button class="active" onclick="setFilter(&#39;exam&#39;,&#39;all&#39;)">全員</button><button class="" onclick="setFilter(&#39;exam&#39;,&#39;けいと&#39;)">けいと</button><button class="" onclick="setFilter(&#39;exam&#39;,&#39;みく&#39;)">みく</button><button class="" onclick="setFilter(&#39;exam&#39;,&#39;尚子&#39;)">尚子</button></div>
-    <div id="examMode"><div class="table-wrap"><table><tbody><tr><th>名前</th><th>教材</th><th>教科</th><th>試験まで</th><th>実績</th><th>状況</th></tr>
-      <tr>
-        <td>けいと</td>
-        <td>数学３　プリント</td>
-        <td>数学</td>
-        <td>15日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    
-      <tr>
-        <td>けいと</td>
-        <td>数学C　プリント</td>
-        <td>数学</td>
-        <td>15日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    
-      <tr>
-        <td>けいと</td>
-        <td>数学３とCの問題集</td>
-        <td>数学</td>
-        <td>15日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    
-      <tr>
-        <td>けいと</td>
-        <td>物理　セミナー</td>
-        <td>理科</td>
-        <td>15日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    
-      <tr>
-        <td>けいと</td>
-        <td>論理英語問題集</td>
-        <td>英語</td>
-        <td>15日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    
-      <tr>
-        <td>けいと</td>
-        <td>英単語・英熟語</td>
-        <td>英語</td>
-        <td>15日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    
-      <tr>
-        <td>けいと</td>
-        <td>先生pdf</td>
-        <td>社会</td>
-        <td>15日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    
-      <tr>
-        <td>けいと</td>
-        <td>化学</td>
-        <td>理科</td>
-        <td>15日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    
-      <tr>
-        <td>尚子</td>
-        <td>みかん</td>
-        <td>英語</td>
-        <td>10日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    
-      <tr>
-        <td>尚子</td>
-        <td>英会話</td>
-        <td>英語</td>
-        <td>10日</td>
-        <td>0h</td>
-        <td>危険 0%</td>
-      </tr>
-    </tbody></table></div></div>
+    <h2>期末試験の学習計画</h2>
+    <p class="small">科目 → 教材と目標 → 今日の実績 → 毎日チェック</p>
+    <p class="small">初期の学習期限は11月28日、予備日は2日です。科目別の試験日は、分かり次第入力できます。</p>
+    <p id="finalStatus" role="status" aria-live="polite"></p>
+    <div id="finalPlanner"></div>
+    <button type="button" class="btn-gray" id="addFinalTask" disabled>教材を追加</button>
   </div>
+  <details class="box"><summary>従来の試験モード</summary><div id="examPersonFilter" class="person-filter"></div><div id="examMode"></div></details>
 </section>
 
 <section id="manageTab" class="tab">
@@ -901,7 +823,7 @@ input[type="file"]{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig={
@@ -1050,8 +972,11 @@ async function pushStateToCloud(){
 }
 function startRealtime(){
   if(unsubscribeRealtime)unsubscribeRealtime();
-  unsubscribeRealtime=onSnapshot(syncDocRef,snap=>{
+  unsubscribeRealtime=onSnapshot(syncDocRef,{includeMetadataChanges:true},snap=>{
+    finalTasks=snap.data()?.finals2026??initialFinalTasks();
+    finalReady=!snap.metadata.fromCache;
     if(!snap.exists()){
+      renderFinals();
       if(state.records.length || state.materials.length)scheduleCloudSave(0);
       return;
     }
@@ -1076,6 +1001,9 @@ async function login(){
   }
 }
 async function logout(){
+  finalReady=false;
+  finalTasks=initialFinalTasks();
+  renderFinals();
   if(unsubscribeRealtime){
     unsubscribeRealtime();
     unsubscribeRealtime=null;
@@ -1090,6 +1018,7 @@ function showLogin(message=""){
   setSyncStatus("");
 }
 function showApp(user){
+  document.querySelector(".main-tabs button[onclick*=examTab]").click();
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
   document.getElementById("userEmail").textContent="ログイン中: "+user.email;
@@ -1597,7 +1526,173 @@ function moveMonth(n){
   else calendarDate.setMonth(calendarDate.getMonth()+n);
   renderCalendar();
 }
+const finalSubjects=["数学III","数学C","物理","英語"];
+const finalPriorities=["最優先","高","通常"];
+let finalTasks=initialFinalTasks();
+let finalReady=false;
+let finalBusy=false;
+
+function initialFinalTasks(){
+  return finalSubjects.map((subject,index)=>({
+    id:"final-"+index,subject,material:"",quantity:40,unit:"問",
+    rounds:subject==="英語"?2:2.5,priority:1,deadline:"2026-11-28",
+    exam:"",reserve:2,entries:{}
+  }));
+}
+function finalDay(date){
+  return Math.floor(Date.parse(date+"T00:00:00Z")/86400000);
+}
+function finalDate(day){
+  return new Date(day*86400000).toISOString().slice(0,10);
+}
+function finalStats(task,date){
+  const today=finalDay(date);
+  const deadline=Math.min(finalDay(task.deadline),task.exam?finalDay(task.exam)-1:Infinity);
+  const end=deadline-task.reserve;
+  const total=Math.ceil(task.quantity*task.rounds);
+  const done=Object.values(task.entries).reduce((sum,e)=>sum+(e.actual??0),0);
+  const remaining=Math.max(0,total-done);
+  const entry=task.entries[date]??{};
+  const actual=entry.actual??0;
+  const available=Math.max(0,(today<=end?end:deadline)-today+1);
+  const automatic=available?actual+Math.ceil(remaining/available):actual;
+  const target=entry.target??automatic;
+  const weekday=(today+3)%7;
+  let left=remaining;
+  const week=[];
+  for(let day=today;day<=today+6-weekday && day<=deadline;day++){
+    const days=Math.max(1,(day<=end?end:deadline)-day+1);
+    const planned=day===today?Math.max(0,target-actual):
+      task.entries[finalDate(day)]?.target??Math.ceil(left/days);
+    if(planned)week.push([finalDate(day),planned]);
+    left=Math.max(0,left-planned);
+  }
+  return {total,done,remaining,actual,target,entry,week,overdue:today>deadline&&remaining>0,
+    countdown:(task.exam?finalDay(task.exam):deadline)-today};
+}
+function finalEscape(value){
+  return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function finalSelect(values,selected,indexed=false){
+  return values.map((label,index)=>{
+    const value=indexed?index:label;
+    return `<option value="${finalEscape(value)}"${value===selected?" selected":""}>${finalEscape(label)}</option>`;
+  }).join("");
+}
+function renderFinals(){
+  const planner=document.getElementById("finalPlanner");
+  if(!planner || (planner.contains(document.activeElement)&&!finalBusy))return;
+  const date=todayStr();
+  const rows=finalTasks.map(task=>({task,...finalStats(task,date)}))
+    .sort((a,b)=>a.task.priority-b.task.priority);
+  const total=rows.reduce((sum,r)=>sum+r.total,0);
+  const done=rows.reduce((sum,r)=>sum+Math.min(r.total,r.done),0);
+  const week=new Map();
+  for(const {task,week:days} of rows){
+    for(const [day,amount] of days){
+      if(!week.has(day))week.set(day,[]);
+      week.get(day).push(`${task.subject} ${amount}${task.unit}`);
+    }
+  }
+  const disabled=finalReady&&!finalBusy?"":"disabled";
+  document.getElementById("addFinalTask").disabled=!!disabled;
+  const open=new Set([...planner.querySelectorAll("details[open][data-task]")].map(e=>e.dataset.task));
+  planner.innerHTML=`
+    <div class="final-summary"><strong>全体完了率 ${total?Math.floor(done/total*100):0}%</strong>
+    <span>未完了 ${rows.filter(r=>r.remaining>0).length}件</span>
+    <span>期限切れ ${rows.filter(r=>r.overdue).length}件</span></div>
+    <p>毎日チェック済み ${rows.filter(r=>r.entry.checked).length} / ${rows.length}件</p>
+    <details><summary>今週の残りの予定</summary>${[...week].sort(([a],[b])=>a.localeCompare(b)).map(([day,items])=>`<p>${day.slice(5)}　${items.join("、")}</p>`).join("")||"<p>今週の予定はありません。</p>"}</details>
+    ${rows.map(r=>{
+      const {task:t}=r;
+      const material=finalEscape(t.material);
+      const timing=r.countdown===0?"当日":r.countdown>0?`あと${r.countdown}日`:`${-r.countdown}日経過`;
+      const status=r.remaining===0?"完了":r.overdue?"期限切れ":"未完了";
+      return `<article class="final-task" data-id="${finalEscape(t.id)}">
+        <h3>${t.subject} <small>${finalPriorities[t.priority]} ・ ${status}</small></h3>
+        <p>${material||"教材未設定"} ・ ${t.quantity}${t.unit} × ${t.rounds}周 ・ ${Math.min(r.done,r.total)}/${r.total}${t.unit}</p>
+        <p>${t.exam?"試験日 "+t.exam:"学習期限 "+t.deadline}（${timing}）</p>
+        <div class="final-check"><strong>今日の目標 ${r.target}${t.unit}</strong>
+        <span>実績 ${r.actual}${t.unit} ／ 残り ${Math.max(0,r.target-r.actual)}${t.unit}</span></div>
+        <form data-action="daily">
+          <div class="final-fields">
+            <label>今日の目標（空欄で自動）<input name="target" type="number" min="0" max="100000" value="${r.entry.target??""}" placeholder="${r.target}" ${disabled}></label>
+            <label>今日の実績（${t.unit}）<input name="actual" type="number" min="0" max="100000" value="${r.entry.actual??""}" ${disabled}></label>
+          </div>
+          <label class="final-tick"><input name="checked" type="checkbox" ${r.entry.checked?"checked":""} ${disabled}> 今日の確認済み</label>
+          <button type="submit" ${disabled}>今日の実績・目標を保存</button>
+        </form>
+        <details data-task="${finalEscape(t.id)}"${open.has(t.id)?" open":""}><summary>教材・目標を編集</summary>
+          <form data-action="task"><div class="final-fields">
+            <label>科目<select name="subject" ${disabled}>${finalSelect(finalSubjects,t.subject)}</select></label>
+            <label>教材<input name="material" maxlength="120" value="${material}" ${disabled}></label>
+            <label>問題数・ページ数<input name="quantity" type="number" min="1" max="10000" required value="${t.quantity}" ${disabled}></label>
+            <label>単位<select name="unit" ${disabled}>${finalSelect(["問","ページ"],t.unit)}</select></label>
+            <label>周回数<input name="rounds" type="number" min="0.5" max="20" step="0.5" required value="${t.rounds}" ${disabled}></label>
+            <label>優先度<select name="priority" ${disabled}>${finalSelect(finalPriorities,t.priority,true)}</select></label>
+            <label>学習期限<input name="deadline" type="date" required value="${t.deadline}" ${disabled}></label>
+            <label>試験日<input name="exam" type="date" value="${t.exam}" ${disabled}></label>
+            <label>予備日<input name="reserve" type="number" min="0" max="30" required value="${t.reserve}" ${disabled}></label>
+          </div><button type="submit" ${disabled}>教材・目標を保存</button></form>
+        </details>
+        <details><summary>過去の実績</summary>
+          ${Object.entries(t.entries).sort(([a],[b])=>b.localeCompare(a)).map(([day,e])=>`<p>${day}　${e.actual??0}${t.unit}${e.checked?" ・ 確認済み":""}</p>`).join("")||"<p>記録はまだありません。</p>"}
+        </details>
+      </article>`;
+    }).join("")}`;
+}
+async function updateFinals(apply){
+  if(!currentUser||!finalReady||finalBusy)return;
+  const status=document.getElementById("finalStatus");
+  finalBusy=true;
+  for(const button of document.querySelectorAll("#finalPlanner button,#addFinalTask"))button.disabled=true;
+  status.textContent="保存中…";
+  try{
+    finalTasks=await runTransaction(db,async tx=>{
+      const snap=await tx.get(syncDocRef);
+      const tasks=snap.data()?.finals2026??initialFinalTasks();
+      const updated=apply(tasks);
+      tx.set(syncDocRef,{finals2026:updated},{merge:true});
+      return updated;
+    });
+    status.textContent="家族と共有しました";
+  }catch(e){
+    console.error(e);
+    status.textContent="保存できませんでした。入力を残しています。接続を確認して再度お試しください。";
+    for(const button of document.querySelectorAll("#finalPlanner button,#addFinalTask"))button.disabled=false;
+    finalBusy=false;
+    return;
+  }
+  renderFinalsAfterSave();
+}
+function renderFinalsAfterSave(){
+  finalBusy=false;
+  if(document.getElementById("finalPlanner").contains(document.activeElement))document.activeElement.blur();
+  renderFinals();
+}
+document.getElementById("finalPlanner").addEventListener("submit",event=>{
+  event.preventDefault();
+  const form=event.target;
+  const id=form.closest("[data-id]").dataset.id;
+  const input=Object.fromEntries(new FormData(form));
+  const date=todayStr();
+  updateFinals(tasks=>tasks.map(task=>{
+    if(task.id!==id)return task;
+    if(form.dataset.action==="daily"){
+      const entry={actual:Number(input.actual),checked:input.checked==="on",target:input.target===""?null:Number(input.target)};
+      return {...task,entries:{...task.entries,[date]:entry}};
+    }
+    return {...task,...input,quantity:Number(input.quantity),rounds:Number(input.rounds),
+      priority:Number(input.priority),reserve:Number(input.reserve),material:input.material.trim()};
+  }));
+});
+document.getElementById("addFinalTask").addEventListener("click",()=>{
+  const task={...initialFinalTasks()[0],id:uid(),quantity:1,rounds:1};
+  updateFinals(tasks=>[...tasks,task]);
+});
+
 function renderExamMode(){
+  renderFinals();
   const today=parseDateLocal(todayStr());
   const list=state.materials.filter(m=>personOk(m.person,"exam"));
   if(list.length===0){
@@ -1663,11 +1758,11 @@ function deleteRecord(id){
   save();renderAll();
 }
 function exportData(){
-  document.getElementById("backupArea").value=JSON.stringify(state,null,2);
+  document.getElementById("backupArea").value=JSON.stringify({...state,finals2026:finalTasks},null,2);
 }
 
 function downloadBackupFile(){
-  const data=JSON.stringify(state,null,2);
+  const data=JSON.stringify({...state,finals2026:finalTasks},null,2);
   const blob=new Blob([data],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
@@ -1714,6 +1809,9 @@ function importData(){
     return;
   }
 
+  if(Array.isArray(data.finals2026)){
+    alert("このバックアップには期末試験の実績が含まれています。従来の記録のみ復元します。");
+  }
   state=data;
   loadImportedData();
   save();
