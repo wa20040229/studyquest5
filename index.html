@@ -439,6 +439,19 @@ input[type="file"]{
 .final-tick{display:flex;align-items:center;gap:.4rem;margin:.55rem 0}
 .final-tick input{width:auto;margin:0}
 .final-task summary,#finalPlanner summary{cursor:pointer;margin:.6rem 0}
+.final-board{margin:.8rem 0;padding:.8rem;border-radius:12px;background:#f2f5fb;color:#192842}
+.final-board-caption{font-size:.84rem}.final-board h4{margin:.65rem 0 .35rem}
+.final-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:5px}
+.final-tiles .final-tile{position:relative;display:block;width:100%;min-height:42px;margin:0;padding:4px;
+  border:1px solid #b9c8df;border-radius:8px;background:#fff;color:#243958;font-weight:700;touch-action:manipulation}
+.final-tiles .final-tile[aria-pressed="true"]{background:#176b57;border-color:#176b57;color:#fff}
+.final-tiles .final-tile-past{opacity:1;background:#d3eadf;border-color:#8db9a8;color:#205344}
+.final-tile span{position:absolute;right:3px;bottom:1px;font-size:10px}
+.final-tile-flip{animation:final-tile-flip .23s ease-out}
+@keyframes final-tile-flip{from{transform:rotateY(85deg)}to{transform:rotateY(0)}}
+@media(prefers-reduced-motion:reduce){.final-tile-flip{animation:none}}
+.final-tile-nav{display:flex;align-items:center;gap:.5rem;justify-content:center;margin-top:.65rem}
+.final-tile-nav button{width:auto;margin:0;padding:.35rem .65rem}
 </style>
 </head>
 
@@ -1579,6 +1592,92 @@ function finalSelect(values,selected,indexed=false){
     return `<option value="${finalEscape(value)}"${value===selected?" selected":""}>${finalEscape(label)}</option>`;
   }).join("");
 }
+const finalTilePage=new Map();
+const finalTilePageSize=60;
+
+function finalTileOwners(task){
+  const owners=new Map();
+  const entries=Object.entries(task.entries).sort(([a],[b])=>a.localeCompare(b));
+  for(const [day,entry] of entries){
+    for(const tile of (entry.tiles??[]).slice(0,entry.actual??0)){
+      if(Number.isInteger(tile)&&tile>=0&&!owners.has(tile))owners.set(tile,day);
+    }
+  }
+  const assigned=new Map();
+  for(const day of owners.values())assigned.set(day,(assigned.get(day)??0)+1);
+  let next=0;
+  for(const [day,entry] of entries){
+    const missing=(entry.actual??0)-(assigned.get(day)??0);
+    for(let i=0;i<missing;i++){
+      while(owners.has(next))next++;
+      owners.set(next++,day);
+    }
+  }
+  return owners;
+}
+
+function renderFinalTiles(task,total,date,disabled){
+  const owners=finalTileOwners(task);
+  const pages=Math.ceil(total/finalTilePageSize);
+  const page=Math.min(finalTilePage.get(task.id)??0,pages-1);
+  const first=page*finalTilePageSize;
+  const last=Math.min(first+finalTilePageSize,total);
+  let html='<div class="final-board"><div class="final-board-caption">タップで完了 ・ 今日のマスはもう一度タップで戻す</div>';
+  for(let start=first;start<last;){
+    const round=Math.floor(start/task.quantity)+1;
+    const end=Math.min(round*task.quantity,last);
+    html+=`<h4>${round}周目</h4><div class="final-tiles">`;
+    for(let tile=start;tile<end;tile++){
+      const number=tile%task.quantity+1;
+      const owner=owners.get(tile);
+      const past=owner&&owner!==date;
+      html+=`<button type="button" class="final-tile${past?" final-tile-past":""}" data-tile="${tile}"
+        aria-label="${round}周目 ${number}${task.unit}${past?" 過去に完了":""}"
+        aria-pressed="${!!owner}" ${past?"disabled":disabled}>${number}<span aria-hidden="true">${owner?"✓":""}</span></button>`;
+    }
+    html+="</div>";
+    start=end;
+  }
+  if(pages>1){
+    html+=`<div class="final-tile-nav"><button type="button" data-tile-page="${page-1}" ${page===0?"disabled":""}>前へ</button>
+      <span>${page+1} / ${pages}</span><button type="button" data-tile-page="${page+1}" ${page===pages-1?"disabled":""}>次へ</button></div>`;
+  }
+  return html+"</div>";
+}
+
+document.getElementById("finalPlanner").addEventListener("click",event=>{
+  const button=event.target.closest("button[data-tile],button[data-tile-page]");
+  if(!button||button.disabled||finalBusy)return;
+  const id=button.closest("[data-id]").dataset.id;
+  if(button.dataset.tilePage!==undefined){
+    finalTilePage.set(id,Number(button.dataset.tilePage));
+    renderFinalsAfterSave();
+    return;
+  }
+  const tile=Number(button.dataset.tile);
+  const date=todayStr();
+  const marked=button.getAttribute("aria-pressed")==="true";
+  button.setAttribute("aria-pressed",String(!marked));
+  button.classList.add("final-tile-flip");
+  button.querySelector("span").textContent=marked?"":"✓";
+  updateFinals(tasks=>tasks.map(task=>{
+    if(task.id!==id||tile>=Math.ceil(task.quantity*task.rounds))return task;
+    const owners=finalTileOwners(task);
+    const owner=owners.get(tile);
+    if(owner&&owner!==date)return task;
+    const tiles=[...owners].filter(([,day])=>day===date).map(([number])=>number);
+    const selected=marked?tiles.filter(number=>number!==tile):[...new Set([...tiles,tile])];
+    const entry={...task.entries[date],actual:selected.length,tiles:selected};
+    return {...task,entries:{...task.entries,[date]:entry}};
+  })).then(saved=>{
+    if(!saved){
+      button.setAttribute("aria-pressed",String(marked));
+      button.querySelector("span").textContent=marked?"✓":"";
+      button.classList.remove("final-tile-flip");
+    }
+  });
+});
+
 function renderFinals(){
   const planner=document.getElementById("finalPlanner");
   if(!planner || (planner.contains(document.activeElement)&&!finalBusy))return;
@@ -1614,6 +1713,8 @@ function renderFinals(){
         <p>${t.exam?"試験日 "+t.exam:"学習期限 "+t.deadline}（${timing}）</p>
         <div class="final-check"><strong>今日の目標 ${r.target}${t.unit}</strong>
         <span>実績 ${r.actual}${t.unit} ／ 残り ${Math.max(0,r.target-r.actual)}${t.unit}</span></div>
+        ${renderFinalTiles(t,r.total,date,disabled)}
+        <details><summary>数字で実績を入力・今日の目標を変更</summary>
         <form data-action="daily">
           <div class="final-fields">
             <label>今日の目標（空欄で自動）<input name="target" type="number" min="0" max="100000" value="${r.entry.target??""}" placeholder="${r.target}" ${disabled}></label>
@@ -1622,6 +1723,7 @@ function renderFinals(){
           <label class="final-tick"><input name="checked" type="checkbox" ${r.entry.checked?"checked":""} ${disabled}> 今日の確認済み</label>
           <button type="submit" ${disabled}>今日の実績・目標を保存</button>
         </form>
+        </details>
         <details data-task="${finalEscape(t.id)}"${open.has(t.id)?" open":""}><summary>教材・目標を編集</summary>
           <form data-action="task"><div class="final-fields">
             <label>科目<select name="subject" ${disabled}>${finalSelect(finalSubjects,t.subject)}</select></label>
@@ -1642,10 +1744,11 @@ function renderFinals(){
     }).join("")}`;
 }
 async function updateFinals(apply){
-  if(!currentUser||!finalReady||finalBusy)return;
+  if(!currentUser||!finalReady||finalBusy)return false;
   const status=document.getElementById("finalStatus");
   finalBusy=true;
-  for(const button of document.querySelectorAll("#finalPlanner button,#addFinalTask"))button.disabled=true;
+  const buttons=[...document.querySelectorAll("#finalPlanner button:not(:disabled),#addFinalTask:not(:disabled)")];
+  for(const button of buttons)button.disabled=true;
   status.textContent="保存中…";
   try{
     finalTasks=await runTransaction(db,async tx=>{
@@ -1659,11 +1762,12 @@ async function updateFinals(apply){
   }catch(e){
     console.error(e);
     status.textContent="保存できませんでした。入力を残しています。接続を確認して再度お試しください。";
-    for(const button of document.querySelectorAll("#finalPlanner button,#addFinalTask"))button.disabled=false;
+    for(const button of buttons)button.disabled=false;
     finalBusy=false;
-    return;
+    return false;
   }
   renderFinalsAfterSave();
+  return true;
 }
 function renderFinalsAfterSave(){
   finalBusy=false;
@@ -1679,7 +1783,9 @@ document.getElementById("finalPlanner").addEventListener("submit",event=>{
   updateFinals(tasks=>tasks.map(task=>{
     if(task.id!==id)return task;
     if(form.dataset.action==="daily"){
-      const entry={actual:Number(input.actual),checked:input.checked==="on",target:input.target===""?null:Number(input.target)};
+      const actual=Number(input.actual);
+      const tiles=[...finalTileOwners(task)].filter(([,day])=>day===date).map(([tile])=>tile).slice(0,actual);
+      const entry={actual,tiles,checked:input.checked==="on",target:input.target===""?null:Number(input.target)};
       return {...task,entries:{...task.entries,[date]:entry}};
     }
     return {...task,...input,quantity:Number(input.quantity),rounds:Number(input.rounds),
