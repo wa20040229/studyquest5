@@ -1580,8 +1580,22 @@ function finalStats(task,date){
     if(planned)week.push([finalDate(day),planned]);
     left=Math.max(0,left-planned);
   }
-  return {total,done,remaining,actual,target,entry,week,overdue:today>deadline&&remaining>0,
+  return {total,done,remaining,actual,target,entry,week,available,end,deadline,overdue:today>deadline&&remaining>0,
     countdown:(task.exam?finalDay(task.exam):deadline)-today};
+}
+function finalGoalDetails(task,stats,date){
+  const {actual,available,deadline,end,entry,remaining}=stats;
+  const today=finalDay(date);
+  const monthDay=day=>finalDate(day).slice(5).replace("-","/");
+  const reserve=task.reserve===0?"予備日なし":
+    `予備日 ${task.reserve}日（${monthDay(end+1)}〜${monthDay(deadline)}）`;
+  if(entry.target!=null)return `${reserve} ・ 今日の目標は手入力を優先`;
+  if(!available)return `${reserve} ・ 学習期限を過ぎたため、今日の目標は実績のみ表示`;
+  const daily=Math.ceil(remaining/available);
+  const basis=today>end?"予備日を使って計算":"学習に使える日数（今日を含む）";
+  const calculation=`残り ${remaining}${task.unit} ÷ ${available}日（切り上げ）＝ ${daily}${task.unit}`;
+  const logged=actual?` ／ 今日の実績 ${actual}${task.unit} を加算`:"";
+  return `${reserve} ・ ${basis} ${available}日<br>${calculation}${logged}`;
 }
 function finalEscape(value){
   return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1713,6 +1727,7 @@ function renderFinals(){
         <p>${t.exam?"試験日 "+t.exam:"学習期限 "+t.deadline}（${timing}）</p>
         <div class="final-check"><strong>今日の目標 ${r.target}${t.unit}</strong>
         <span>実績 ${r.actual}${t.unit} ／ 残り ${Math.max(0,r.target-r.actual)}${t.unit}</span></div>
+        <p class="small">${finalGoalDetails(t,r,date)}</p>
         ${renderFinalTiles(t,r.total,date,disabled)}
         <details><summary>数字で実績を入力・今日の目標を変更</summary>
         <form data-action="daily">
@@ -1996,3 +2011,4 @@ onAuthStateChanged(auth,user=>{
 
 
 </body></html>
+
