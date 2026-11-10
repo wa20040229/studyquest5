@@ -986,7 +986,7 @@ async function pushStateToCloud(){
 function startRealtime(){
   if(unsubscribeRealtime)unsubscribeRealtime();
   unsubscribeRealtime=onSnapshot(syncDocRef,{includeMetadataChanges:true},snap=>{
-    finalTasks=snap.data()?.finals2026??initialFinalTasks();
+    finalTasks=finalPlanTasks(snap.data()?.finals2026??initialFinalTasks());
     finalReady=!snap.metadata.fromCache;
     if(!snap.exists()){
       renderFinals();
@@ -1541,6 +1541,10 @@ function moveMonth(n){
 }
 const finalSubjects=["数学III","数学C","物理","英語"];
 const finalPriorities=["最優先","高","通常"];
+const finalStudyDays=[10,11,12,13,14,16,17,18,19,20,22,23,24,26]
+  .map(day=>"2026-11-"+day);
+const finalBufferDays=["2026-11-15","2026-11-21","2026-11-25"];
+const finalExtraSubjects=[0,0,0,0,1,2,2,2,2,3,3,3,3];
 let finalTasks=initialFinalTasks();
 let finalReady=false;
 let finalBusy=false;
@@ -1548,9 +1552,54 @@ let finalBusy=false;
 function initialFinalTasks(){
   return finalSubjects.map((subject,index)=>({
     id:"final-"+index,subject,material:"",quantity:40,unit:"問",
-    rounds:subject==="英語"?2:2.5,priority:1,deadline:"2026-11-28",
-    exam:"",reserve:2,entries:{}
+    rounds:1.5,priority:1,deadline:"2026-11-28",
+    exam:"2026-12-09",reserve:3,plan:"finals-nov28",entries:{}
   }));
+}
+function finalPlanTasks(tasks){
+  return tasks.map(task=>{
+    const index=finalSubjects.indexOf(task.subject);
+    if(index<0||task.id!=="final-"+index||task.plan||
+      task.quantity!==40||task.unit!=="問"||task.deadline!=="2026-11-28")return task;
+    if(task.rounds!==(index===3?2:2.5)||task.exam)return task;
+    return {...task,rounds:1.5,exam:"2026-12-09",reserve:3,plan:"finals-nov28"};
+  });
+}
+function finalPlanProgress(task,owners){
+  let submission=0,review=0;
+  for(const tile of owners.keys()){
+    if(tile<task.quantity)submission++;
+    else if(tile<task.quantity*2)review++;
+  }
+  return {submission,review:Math.min(review,20)};
+}
+function finalScheduledTarget(task,date){
+  const day=finalStudyDays.indexOf(date);
+  return day<0?0:4+Number(finalExtraSubjects[day]===finalSubjects.indexOf(task.subject));
+}
+function finalPlanStats(task,date){
+  const owners=finalTileOwners(task);
+  const {submission,review}=finalPlanProgress(task,owners);
+  const total=60, done=submission+review, remaining=total-done;
+  const entry=task.entries[date]??{},actual=entry.actual??0;
+  const target=entry.target??(remaining?Math.min(actual+remaining,finalScheduledTarget(task,date)):0);
+  const priorTarget=finalStudyDays.filter(day=>day<date).reduce((sum,day)=>
+    sum+(task.entries[day]?.target??finalScheduledTarget(task,day)),0);
+  const startingDone=task.subject==="数学C"?3:0;
+  const backlog=Math.max(0,Math.min(total,startingDone+priorTarget)-done);
+  const today=finalDay(date),weekday=(today+3)%7;
+  const week=[];
+  for(let offset=0,left=remaining;offset<=6-weekday&&left>0;offset++){
+    const day=finalDate(today+offset);
+    if(day>task.deadline)break;
+    const planned=offset===0?Math.max(0,target-actual):
+      task.entries[day]?.target??finalScheduledTarget(task,day);
+    const amount=Math.min(planned,left);
+    if(amount)week.push([day,amount]);
+    left-=amount;
+  }
+  return {total,done,remaining,actual,target,entry,week,submission,review,backlog,
+    overdue:date>task.deadline&&remaining>0,countdown:finalDay(task.deadline)-today};
 }
 function finalDay(date){
   return Math.floor(Date.parse(date+"T00:00:00Z")/86400000);
@@ -1559,6 +1608,7 @@ function finalDate(day){
   return new Date(day*86400000).toISOString().slice(0,10);
 }
 function finalStats(task,date){
+  if(task.plan==="finals-nov28")return finalPlanStats(task,date);
   const today=finalDay(date);
   const deadline=Math.min(finalDay(task.deadline),task.exam?finalDay(task.exam)-1:Infinity);
   const end=deadline-task.reserve;
@@ -1584,6 +1634,12 @@ function finalStats(task,date){
     countdown:(task.exam?finalDay(task.exam):deadline)-today};
 }
 function finalGoalDetails(task,stats,date){
+  if(task.plan==="finals-nov28"){
+    const role=finalBufferDays.includes(date)?"今日は予備日":
+      date==="2026-11-27"||date==="2026-11-28"?"今日は確認・仕上げ日":
+      finalStudyDays.includes(date)?"今日は通常学習日":"通常学習の予定なし";
+    return `${role} ・ 予備日 11/15・11/21・11/25<br>前日までの計画との差 ${stats.backlog}問${stats.entry.target!=null?" ・ 手入力の目標を優先":""}`;
+  }
   const {actual,available,deadline,end,entry,remaining}=stats;
   const today=finalDay(date);
   const monthDay=day=>finalDate(day).slice(5).replace("-","/");
@@ -1632,6 +1688,17 @@ function finalTileOwners(task){
 
 function renderFinalTiles(task,total,date,disabled){
   const owners=finalTileOwners(task);
+  if(task.plan==="finals-nov28"){
+    const {submission,review}=finalPlanProgress(task,owners);
+    return `<div class="final-board">
+      <div class="final-board-caption">タップで完了 ・ 今日のマスはもう一度タップで戻す</div>
+      <h4>提出用（1周目） ${submission}/40問</h4>
+      ${renderFinalPlanTiles(owners,0,40,date,disabled,false)}
+      <h4>解き直し ${review}/20問</h4>
+      <p class="small">${submission<40?"提出用の40問を終えると選べます。":"1〜40番から、間違えた問題や解説を見た問題を優先して20問選びます。"}</p>
+      ${renderFinalPlanTiles(owners,40,80,date,disabled,submission<40||review>=20)}
+    </div>`;
+  }
   const pages=Math.ceil(total/finalTilePageSize);
   const page=Math.min(finalTilePage.get(task.id)??0,pages-1);
   const first=page*finalTilePageSize;
@@ -1659,6 +1726,17 @@ function renderFinalTiles(task,total,date,disabled){
   return html+"</div>";
 }
 
+function renderFinalPlanTiles(owners,start,end,date,disabled,locked){
+  let html='<div class="final-tiles">';
+  for(let tile=start;tile<end;tile++){
+    const owner=owners.get(tile),past=owner&&owner!==date;
+    const number=tile-start+1;
+    html+=`<button type="button" class="final-tile${past?" final-tile-past":""}" data-tile="${tile}"
+      aria-label="${start?"解き直し":"提出用"} ${number}番" aria-pressed="${!!owner}"
+      ${past||(!owner&&locked)?"disabled":disabled}>${number}<span aria-hidden="true">${owner?"✓":""}</span></button>`;
+  }
+  return html+"</div>";
+}
 document.getElementById("finalPlanner").addEventListener("click",event=>{
   const button=event.target.closest("button[data-tile],button[data-tile-page]");
   if(!button||button.disabled||finalBusy)return;
@@ -1675,10 +1753,16 @@ document.getElementById("finalPlanner").addEventListener("click",event=>{
   button.classList.add("final-tile-flip");
   button.querySelector("span").textContent=marked?"":"✓";
   updateFinals(tasks=>tasks.map(task=>{
-    if(task.id!==id||tile>=Math.ceil(task.quantity*task.rounds))return task;
+    if(task.id!==id)return task;
+    const planned=task.plan==="finals-nov28";
+    if(tile>=(planned?80:Math.ceil(task.quantity*task.rounds)))return task;
     const owners=finalTileOwners(task);
     const owner=owners.get(tile);
     if(owner&&owner!==date)return task;
+    if(planned&&!owner&&tile>=40){
+      const {submission,review}=finalPlanProgress(task,owners);
+      if(submission<40||review>=20)return task;
+    }
     const tiles=[...owners].filter(([,day])=>day===date).map(([number])=>number);
     const selected=marked?tiles.filter(number=>number!==tile):[...new Set([...tiles,tile])];
     const entry={...task.entries[date],actual:selected.length,tiles:selected};
@@ -1724,7 +1808,9 @@ function renderFinals(){
       return `<article class="final-task" data-id="${finalEscape(t.id)}">
         <h3>${t.subject} <small>${finalPriorities[t.priority]} ・ ${status}</small></h3>
         <p>${material||"教材未設定"} ・ ${t.quantity}${t.unit} × ${t.rounds}周 ・ ${Math.min(r.done,r.total)}/${r.total}${t.unit}</p>
-        <p>${t.exam?"試験日 "+t.exam:"学習期限 "+t.deadline}（${timing}）</p>
+        <p>${t.plan==="finals-nov28"?"学習締切 "+t.deadline+"（"+timing+"） ・ 試験日 "+t.exam:
+          (t.exam?"試験日 "+t.exam:"学習期限 "+t.deadline)+"（"+timing+"）"}</p>
+        ${t.plan==="finals-nov28"?`<p>提出用の残り <strong>${40-r.submission}問</strong> ・ 解き直しの残り <strong>${20-r.review}問</strong></p>`:""}
         <div class="final-check"><strong>今日の目標 ${r.target}${t.unit}</strong>
         <span>実績 ${r.actual}${t.unit} ／ 残り ${Math.max(0,r.target-r.actual)}${t.unit}</span></div>
         <p class="small">${finalGoalDetails(t,r,date)}</p>
@@ -1749,7 +1835,7 @@ function renderFinals(){
             <label>優先度<select name="priority" ${disabled}>${finalSelect(finalPriorities,t.priority,true)}</select></label>
             <label>学習期限<input name="deadline" type="date" required value="${t.deadline}" ${disabled}></label>
             <label>試験日<input name="exam" type="date" value="${t.exam}" ${disabled}></label>
-            <label>予備日<input name="reserve" type="number" min="0" max="30" required value="${t.reserve}" ${disabled}></label>
+            <label>予備日数<input name="reserve" type="number" min="0" max="30" required value="${t.reserve}" ${disabled}></label>
           </div><button type="submit" ${disabled}>教材・目標を保存</button></form>
         </details>
         <details><summary>過去の実績</summary>
@@ -1768,7 +1854,7 @@ async function updateFinals(apply){
   try{
     finalTasks=await runTransaction(db,async tx=>{
       const snap=await tx.get(syncDocRef);
-      const tasks=snap.data()?.finals2026??initialFinalTasks();
+      const tasks=finalPlanTasks(snap.data()?.finals2026??initialFinalTasks());
       const updated=apply(tasks);
       tx.set(syncDocRef,{finals2026:updated},{merge:true});
       return updated;
@@ -1798,17 +1884,28 @@ document.getElementById("finalPlanner").addEventListener("submit",event=>{
   updateFinals(tasks=>tasks.map(task=>{
     if(task.id!==id)return task;
     if(form.dataset.action==="daily"){
-      const actual=Number(input.actual);
+      const planned=task.plan==="finals-nov28";
+      const owners=finalTileOwners(task);
+      const prior=[...owners].filter(([,day])=>day!==date).length;
+      const actual=planned?Math.min(Number(input.actual),Math.max(0,60-prior)):Number(input.actual);
       const tiles=[...finalTileOwners(task)].filter(([,day])=>day===date).map(([tile])=>tile).slice(0,actual);
+      if(planned){
+        for(let tile=0;tiles.length<actual;tile++){
+          if(!owners.has(tile))tiles.push(tile);
+        }
+      }
       const entry={actual,tiles,checked:input.checked==="on",target:input.target===""?null:Number(input.target)};
       return {...task,entries:{...task.entries,[date]:entry}};
     }
-    return {...task,...input,quantity:Number(input.quantity),rounds:Number(input.rounds),
+    const updated={...task,...input,quantity:Number(input.quantity),rounds:Number(input.rounds),
       priority:Number(input.priority),reserve:Number(input.reserve),material:input.material.trim()};
+    if(task.plan==="finals-nov28"&&["subject","quantity","unit","rounds","deadline","exam","reserve"]
+      .some(key=>updated[key]!==task[key]))updated.plan="custom";
+    return updated;
   }));
 });
 document.getElementById("addFinalTask").addEventListener("click",()=>{
-  const task={...initialFinalTasks()[0],id:uid(),quantity:1,rounds:1};
+  const task={...initialFinalTasks()[0],id:uid(),quantity:1,rounds:1,exam:"",reserve:2,plan:"custom"};
   updateFinals(tasks=>[...tasks,task]);
 });
 
@@ -2011,4 +2108,5 @@ onAuthStateChanged(auth,user=>{
 
 
 </body></html>
+
 
