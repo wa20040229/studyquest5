@@ -1541,65 +1541,123 @@ function moveMonth(n){
 }
 const finalSubjects=["数学III","数学C","物理","英語"];
 const finalPriorities=["最優先","高","通常"];
-const finalStudyDays=[10,11,12,13,14,16,17,18,19,20,22,23,24,26]
-  .map(day=>"2026-11-"+day);
+const finalMilestoneDate="2026-11-28";
+const finalExamDate="2026-12-09";
+const finalPlanStart="2026-11-10";
 const finalBufferDays=["2026-11-15","2026-11-21","2026-11-25"];
-const finalExtraSubjects=[0,0,0,0,1,2,2,2,2,3,3,3,3];
+const finalExamBufferDays=["2026-12-06","2026-12-08"];
+const finalJstDate=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"});
 let finalTasks=initialFinalTasks();
 let finalReady=false;
 let finalBusy=false;
 
+function finalExamRounds(subject){
+  return subject==="英語"?2:2.5;
+}
 function initialFinalTasks(){
   return finalSubjects.map((subject,index)=>({
     id:"final-"+index,subject,material:"",quantity:40,unit:"問",
-    rounds:1.5,priority:1,deadline:"2026-11-28",
-    exam:"2026-12-09",reserve:3,plan:"finals-nov28",entries:{}
+    rounds:1.5,examRounds:finalExamRounds(subject),priority:1,deadline:finalMilestoneDate,
+    exam:finalExamDate,reserve:3,examReserve:2,plan:"finals-nov28",entries:{}
   }));
 }
 function finalPlanTasks(tasks){
   return tasks.map(task=>{
     const index=finalSubjects.indexOf(task.subject);
-    if(index<0||task.id!=="final-"+index||task.plan||
-      task.quantity!==40||task.unit!=="問"||task.deadline!=="2026-11-28")return task;
-    if(task.rounds!==(index===3?2:2.5)||task.exam)return task;
-    return {...task,rounds:1.5,exam:"2026-12-09",reserve:3,plan:"finals-nov28"};
+    const legacy=index>=0&&task.id==="final-"+index&&!task.plan&&
+      task.quantity===40&&task.unit==="問"&&task.deadline===finalMilestoneDate&&
+      task.rounds===finalExamRounds(task.subject)&&!task.exam;
+    if(legacy)return {...task,rounds:1.5,examRounds:task.rounds,exam:finalExamDate,
+      reserve:3,examReserve:2,plan:"finals-nov28"};
+    if(task.plan!=="finals-nov28")return task;
+    return {...task,examRounds:task.examRounds??finalExamRounds(task.subject),examReserve:task.examReserve??2};
   });
 }
-function finalPlanProgress(task,owners){
-  let submission=0,review=0;
-  for(const tile of owners.keys()){
-    if(tile<task.quantity)submission++;
-    else if(tile<task.quantity*2)review++;
+function finalPlanProgress(task,owners,cutoff){
+  const total=Math.ceil(task.quantity*task.examRounds);
+  const milestone=Math.ceil(task.quantity*task.rounds);
+  // Keep the original free choice of any question during a fractional last round.
+  let done=0, submission=0, milestoneDone=0;
+  const perRound=new Map();
+  for(const [tile,date] of owners){
+    if(date>cutoff)continue;
+    const round=Math.floor(tile/task.quantity);
+    perRound.set(round,(perRound.get(round)??0)+1);
   }
-  return {submission,review:Math.min(review,20)};
+  for(const [round,count] of perRound){
+    const offset=round*task.quantity;
+    done+=Math.max(0,Math.min(count,task.quantity,total-offset));
+    milestoneDone+=Math.max(0,Math.min(count,task.quantity,milestone-offset));
+    if(round===0)submission=Math.min(task.quantity,count);
+  }
+  return {done,submission,milestoneDone};
 }
-function finalScheduledTarget(task,date){
-  const day=finalStudyDays.indexOf(date);
-  return day<0?0:4+Number(finalExtraSubjects[day]===finalSubjects.indexOf(task.subject));
+function finalDates(first,last){
+  return Array.from({length:Math.max(0,finalDay(last)-finalDay(first)+1)},
+    (_,index)=>finalDate(finalDay(first)+index));
+}
+function finalReserveDates(days,preferred,count){
+  const ordered=[...preferred.filter(day=>days.includes(day)),
+    ...days.slice().reverse().filter(day=>!preferred.includes(day))];
+  return new Set(ordered.slice(0,count));
+}
+function finalAllocate(days,reserves,entries,needed,date,actual){
+  const active=days.filter(day=>day>=date&&entries[day]?.missed!==true);
+  const manual=active.filter(day=>entries[day]?.target!=null);
+  const amount=day=>Math.max(0,entries[day].target-(day===date?actual:0));
+  const manualWork=manual.reduce((sum,day)=>sum+amount(day),0);
+  const normal=active.filter(day=>!reserves.has(day)&&entries[day]?.target==null);
+  const work=Math.max(0,needed-manualWork);
+  const perDay=normal.length?Math.ceil(work/normal.length):0;
+  const planned=new Map(manual.map(day=>[day,amount(day)]));
+  normal.forEach((day,index)=>{
+    planned.set(day,Math.floor(work/normal.length)+Number(index<work%normal.length));
+  });
+  return {planned,perDay,normalDays:normal.length,manualWork,
+    shortfall:normal.length?0:work};
 }
 function finalPlanStats(task,date){
   const owners=finalTileOwners(task);
-  const {submission,review}=finalPlanProgress(task,owners);
-  const total=60, done=submission+review, remaining=total-done;
+  const progress=finalPlanProgress(task,owners,date);
+  const {done,submission,milestoneDone}=progress;
+  const total=Math.ceil(task.quantity*task.examRounds);
+  const milestone=Math.ceil(task.quantity*task.rounds);
+  const remaining=Math.max(0,total-done);
+  const milestoneRemaining=Math.max(0,milestone-milestoneDone);
+  const additional=Math.ceil(task.quantity/2);
+  const review=Math.max(0,Math.min(additional,finalPlanProgress({...task,rounds:1.5},owners,date).milestoneDone-submission));
   const entry=task.entries[date]??{},actual=entry.actual??0;
-  const target=entry.target??(remaining?Math.min(actual+remaining,finalScheduledTarget(task,date)):0);
-  const priorTarget=finalStudyDays.filter(day=>day<date).reduce((sum,day)=>
-    sum+(task.entries[day]?.target??finalScheduledTarget(task,day)),0);
-  const startingDone=task.subject==="数学C"?3:0;
-  const backlog=Math.max(0,Math.min(total,startingDone+priorTarget)-done);
+  const examEnd=finalDate(finalDay(task.exam)-1);
+  const deadline=task.deadline<examEnd?task.deadline:examEnd;
+  const earlyDays=finalDates(finalPlanStart,deadline);
+  const lateDays=finalDates(finalDate(finalDay(deadline)+1),examEnd);
+  const earlyReserves=finalReserveDates(earlyDays,finalBufferDays,task.reserve);
+  const lateReserves=finalReserveDates(lateDays,finalExamBufferDays,task.examReserve);
+  const early=finalAllocate(earlyDays,earlyReserves,task.entries,Math.min(milestoneRemaining,remaining),date,actual);
+  const earlyWork=[...early.planned.values()].reduce((sum,count)=>sum+count,0);
+  const late=finalAllocate(lateDays,lateReserves,task.entries,Math.max(0,remaining-earlyWork),date,actual);
+  const plan=new Map([...early.planned,...late.planned]);
+  const reserves=new Set([...earlyReserves,...lateReserves]);
+  const days=[...earlyDays,...lateDays];
+  const missed=days.filter(day=>{
+    const entry=task.entries[day];
+    if(entry?.missed)return true;
+    if(day>=date||entry?.target===0||entry?.actual>0)return false;
+    if(entry?.target!=null)return true;
+    if(reserves.has(day))return false;
+    const before=finalPlanProgress(task,owners,finalDate(finalDay(day)-1));
+    return day<=deadline?before.milestoneDone<milestone:before.done<total;
+  });
+  const dayType=day=>missed.includes(day)?"未実施日":reserves.has(day)?"予備日":"通常日";
+  const target=entry.missed?actual:entry.target??(actual+(plan.get(date)??0));
+  const todayWork=Math.max(0,target-actual);
   const today=finalDay(date),weekday=(today+3)%7;
-  const week=[];
-  for(let offset=0,left=remaining;offset<=6-weekday&&left>0;offset++){
-    const day=finalDate(today+offset);
-    if(day>task.deadline)break;
-    const planned=offset===0?Math.max(0,target-actual):
-      task.entries[day]?.target??finalScheduledTarget(task,day);
-    const amount=Math.min(planned,left);
-    if(amount)week.push([day,amount]);
-    left-=amount;
-  }
-  return {total,done,remaining,actual,target,entry,week,submission,review,backlog,
-    overdue:date>task.deadline&&remaining>0,countdown:finalDay(task.deadline)-today};
+  const week=days.filter(day=>day>=date&&finalDay(day)<=today+6-weekday)
+    .map(day=>[day,plan.get(day)??0,dayType(day)]);
+  return {total,done,remaining,actual,target,entry,week,owners,date,submission,review,additional,
+    milestone,milestoneRemaining,todayWork,days,dayType,reserves,missed,plan,early,late,deadline,
+    overdue:date>examEnd&&remaining>0,countdown:finalDay(task.exam)-today,
+    milestoneShortfall:date>deadline?milestone-finalPlanProgress(task,owners,deadline).milestoneDone:null};
 }
 function finalDay(date){
   return Math.floor(Date.parse(date+"T00:00:00Z")/86400000);
@@ -1635,10 +1693,14 @@ function finalStats(task,date){
 }
 function finalGoalDetails(task,stats,date){
   if(task.plan==="finals-nov28"){
-    const role=finalBufferDays.includes(date)?"今日は予備日":
-      date==="2026-11-27"||date==="2026-11-28"?"今日は確認・仕上げ日":
-      finalStudyDays.includes(date)?"今日は通常学習日":"通常学習の予定なし";
-    return `${role} ・ 予備日 11/15・11/21・11/25<br>前日までの計画との差 ${stats.backlog}問${stats.entry.target!=null?" ・ 手入力の目標を優先":""}`;
+    const monthDay=day=>day.slice(5).replace("-","/");
+    const reserveDates=[...stats.reserves].filter(day=>day>=date).sort().map(monthDay);
+    const daily=phase=>phase.normalDays?`通常日1日あたり最大 ${phase.perDay}${task.unit}（自動配分の通常日 ${phase.normalDays}日）`:
+      phase.shortfall?`通常日なし・未配分 ${phase.shortfall}${task.unit}`:"通常日なし";
+    return `${stats.days.includes(date)?stats.dayType(date):"学習期間外"} ・ 残りの予備日 ${reserveDates.length}日${reserveDates.length?"（"+reserveDates.join("・")+"）":""}
+      <br>${monthDay(stats.deadline)}まで　${date>stats.deadline?"締切を経過":daily(stats.early)}
+      <br>その後〜試験前日　${daily(stats.late)}
+      ${stats.entry.target!=null?"<br>今日の目標は手入力を優先":""}`;
   }
   const {actual,available,deadline,end,entry,remaining}=stats;
   const today=finalDay(date);
@@ -1689,15 +1751,19 @@ function finalTileOwners(task){
 function renderFinalTiles(task,total,date,disabled){
   const owners=finalTileOwners(task);
   if(task.plan==="finals-nov28"){
-    const {submission,review}=finalPlanProgress(task,owners);
-    return `<div class="final-board">
-      <div class="final-board-caption">タップで完了 ・ 今日のマスはもう一度タップで戻す</div>
-      <h4>提出用（1周目） ${submission}/40問</h4>
-      ${renderFinalPlanTiles(owners,0,40,date,disabled,false)}
-      <h4>解き直し ${review}/20問</h4>
-      <p class="small">${submission<40?"提出用の40問を終えると選べます。":"1〜40番から、間違えた問題や解説を見た問題を優先して20問選びます。"}</p>
-      ${renderFinalPlanTiles(owners,40,80,date,disabled,submission<40||review>=20)}
-    </div>`;
+    let html='<div class="final-board"><div class="final-board-caption">タップで完了 ・ 今日のマスはもう一度タップで戻す</div>';
+    const {quantity}=task;
+    let previousComplete=true;
+    for(let start=0;start<total;start+=quantity){
+      const max=Math.min(quantity,total-start);
+      const count=[...owners.keys()].filter(tile=>tile>=start&&tile<start+quantity).length;
+      const round=start/quantity+1;
+      const title=round===1?"提出用（1周目）":round===2?"解き直し（2周目）":round+"周目";
+      html+=`<h4>${title} ${Math.min(count,max)}/${max}${task.unit}</h4>
+        ${renderFinalPlanTiles(owners,start,start+quantity,date,disabled,!previousComplete||count>=max,title)}`;
+      previousComplete=previousComplete&&count>=max;
+    }
+    return html+"</div>";
   }
   const pages=Math.ceil(total/finalTilePageSize);
   const page=Math.min(finalTilePage.get(task.id)??0,pages-1);
@@ -1726,13 +1792,13 @@ function renderFinalTiles(task,total,date,disabled){
   return html+"</div>";
 }
 
-function renderFinalPlanTiles(owners,start,end,date,disabled,locked){
+function renderFinalPlanTiles(owners,start,end,date,disabled,locked,title){
   let html='<div class="final-tiles">';
   for(let tile=start;tile<end;tile++){
     const owner=owners.get(tile),past=owner&&owner!==date;
     const number=tile-start+1;
     html+=`<button type="button" class="final-tile${past?" final-tile-past":""}" data-tile="${tile}"
-      aria-label="${start?"解き直し":"提出用"} ${number}番" aria-pressed="${!!owner}"
+      aria-label="${title} ${number}番" aria-pressed="${!!owner}"
       ${past||(!owner&&locked)?"disabled":disabled}>${number}<span aria-hidden="true">${owner?"✓":""}</span></button>`;
   }
   return html+"</div>";
@@ -1747,7 +1813,7 @@ document.getElementById("finalPlanner").addEventListener("click",event=>{
     return;
   }
   const tile=Number(button.dataset.tile);
-  const date=todayStr();
+  const date=finalJstDate.format(new Date());
   const marked=button.getAttribute("aria-pressed")==="true";
   button.setAttribute("aria-pressed",String(!marked));
   button.classList.add("final-tile-flip");
@@ -1755,17 +1821,20 @@ document.getElementById("finalPlanner").addEventListener("click",event=>{
   updateFinals(tasks=>tasks.map(task=>{
     if(task.id!==id)return task;
     const planned=task.plan==="finals-nov28";
-    if(tile>=(planned?80:Math.ceil(task.quantity*task.rounds)))return task;
+    const total=Math.ceil(task.quantity*(planned?task.examRounds:task.rounds));
+    if(tile<0||tile>=(planned?Math.ceil(total/task.quantity)*task.quantity:total))return task;
     const owners=finalTileOwners(task);
     const owner=owners.get(tile);
     if(owner&&owner!==date)return task;
-    if(planned&&!owner&&tile>=40){
-      const {submission,review}=finalPlanProgress(task,owners);
-      if(submission<40||review>=20)return task;
+    if(planned&&!owner){
+      const start=Math.floor(tile/task.quantity)*task.quantity;
+      const inRound=[...owners.keys()].filter(number=>number>=start&&number<start+task.quantity).length;
+      const previous=finalPlanProgress({...task,rounds:start/task.quantity},owners,date).milestoneDone;
+      if(previous<start||inRound>=Math.min(task.quantity,total-start))return task;
     }
     const tiles=[...owners].filter(([,day])=>day===date).map(([number])=>number);
     const selected=marked?tiles.filter(number=>number!==tile):[...new Set([...tiles,tile])];
-    const entry={...task.entries[date],actual:selected.length,tiles:selected};
+    const entry={...task.entries[date],actual:selected.length,tiles:selected,...(selected.length?{missed:false}:{})};
     return {...task,entries:{...task.entries,[date]:entry}};
   })).then(saved=>{
     if(!saved){
@@ -1776,19 +1845,58 @@ document.getElementById("finalPlanner").addEventListener("click",event=>{
   });
 });
 
+function finalQuestionList(task,stats){
+  const numbers=[];
+  for(let start=0;start<stats.total;start+=task.quantity){
+    const round=start/task.quantity+1;
+    const max=Math.min(task.quantity,stats.total-start);
+    let unassigned=max;
+    const next=[];
+    for(let index=0;index<task.quantity;index++){
+      const owner=stats.owners.get(start+index);
+      if(owner&&owner<=stats.date)unassigned--;
+      else next.push(`${round}周目の${index+1}番`);
+    }
+    numbers.push(...next.slice(0,Math.max(0,unassigned)));
+  }
+  return numbers;
+}
+function renderFinalPlanDetails(task,stats,date){
+  const questions=finalQuestionList(task,stats);
+  const planned=Math.min(stats.todayWork,questions.length);
+  const extra=questions[planned];
+  const rounds=new Intl.NumberFormat("ja-JP",{maximumFractionDigits:3}).format(stats.done/task.quantity);
+  const milestoneMessage=stats.milestoneShortfall!==null?
+    `締切時点の未達 ${stats.milestoneShortfall}${task.unit}`:`残り ${stats.milestoneRemaining}${task.unit}`;
+  return `<p>現在 <strong>${rounds}周</strong>（${stats.done}/${stats.total}${task.unit}） ・ 試験まで残り <strong>${stats.remaining}${task.unit}</strong></p>
+    <p>${stats.deadline}の目標 ${task.rounds}周（${stats.milestone}${task.unit}） ・ ${milestoneMessage}</p>
+    <p>提出用1周　残り <strong>${task.quantity-stats.submission}${task.unit}</strong><br>
+      追加0.5周　残り <strong>${stats.additional-stats.review}${task.unit}</strong></p>
+    <p>最初に着手する1問　${planned?questions[0]:"今日の必須分なし"}<br>
+      続けて解く問題　${planned>1?questions.slice(1,Math.min(planned,7)).join("、")+(planned>7?" ほか"+(planned-7)+"問":""):"—"}<br>
+      余力があれば　${extra&&date<task.exam&&!stats.entry.missed?extra:"—"}</p>`;
+}
+function renderFinalPlanDates(task,stats,date){
+  const missed=stats.missed.map(day=>day.slice(5).replace("-","/"));
+  return `<details><summary>通常日・予備日・未実施日</summary>
+    <p>未実施日 ${missed.length}日${missed.length?"（"+missed.join("・")+"）":""}</p>
+    ${stats.days.filter(day=>day>=date).map(day=>`<div>${day.slice(5).replace("-","/")}　${stats.dayType(day)}　${stats.plan.get(day)??0}${task.unit}
+      ${task.entries[day]?.target!=null?"（手入力）":""}</div>`).join("")}</details>`;
+}
+
 function renderFinals(){
   const planner=document.getElementById("finalPlanner");
   if(!planner || (planner.contains(document.activeElement)&&!finalBusy))return;
-  const date=todayStr();
+  const date=finalJstDate.format(new Date());
   const rows=finalTasks.map(task=>({task,...finalStats(task,date)}))
     .sort((a,b)=>a.task.priority-b.task.priority);
   const total=rows.reduce((sum,r)=>sum+r.total,0);
   const done=rows.reduce((sum,r)=>sum+Math.min(r.total,r.done),0);
   const week=new Map();
   for(const {task,week:days} of rows){
-    for(const [day,amount] of days){
+    for(const [day,amount,type] of days){
       if(!week.has(day))week.set(day,[]);
-      week.get(day).push(`${task.subject} ${amount}${task.unit}`);
+      week.get(day).push(`${task.subject} ${amount}${task.unit}${type&&type!=="通常日"?"（"+type+"）":""}`);
     }
   }
   const disabled=finalReady&&!finalBusy?"":"disabled";
@@ -1807,13 +1915,13 @@ function renderFinals(){
       const status=r.remaining===0?"完了":r.overdue?"期限切れ":"未完了";
       return `<article class="final-task" data-id="${finalEscape(t.id)}">
         <h3>${t.subject} <small>${finalPriorities[t.priority]} ・ ${status}</small></h3>
-        <p>${material||"教材未設定"} ・ ${t.quantity}${t.unit} × ${t.rounds}周 ・ ${Math.min(r.done,r.total)}/${r.total}${t.unit}</p>
-        <p>${t.plan==="finals-nov28"?"学習締切 "+t.deadline+"（"+timing+"） ・ 試験日 "+t.exam:
-          (t.exam?"試験日 "+t.exam:"学習期限 "+t.deadline)+"（"+timing+"）"}</p>
-        ${t.plan==="finals-nov28"?`<p>提出用の残り <strong>${40-r.submission}問</strong> ・ 解き直しの残り <strong>${20-r.review}問</strong></p>`:""}
+        <p>${material||"教材未設定"} ・ 1周 ${t.quantity}${t.unit}</p>
+        <p>${t.exam?"試験日 "+t.exam:"学習期限 "+t.deadline}（${timing}）</p>
         <div class="final-check"><strong>今日の目標 ${r.target}${t.unit}</strong>
-        <span>実績 ${r.actual}${t.unit} ／ 残り ${Math.max(0,r.target-r.actual)}${t.unit}</span></div>
+        <span>実績 ${r.actual}${t.unit} ／ 今日あと ${r.todayWork??Math.max(0,r.target-r.actual)}${t.unit}</span></div>
+        ${t.plan==="finals-nov28"?renderFinalPlanDetails(t,r,date):`<p>${t.rounds}周目標 ・ 残り ${r.remaining}${t.unit}</p>`}
         <p class="small">${finalGoalDetails(t,r,date)}</p>
+        ${t.plan==="finals-nov28"?renderFinalPlanDates(t,r,date):""}
         ${renderFinalTiles(t,r.total,date,disabled)}
         <details><summary>数字で実績を入力・今日の目標を変更</summary>
         <form data-action="daily">
@@ -1822,6 +1930,7 @@ function renderFinals(){
             <label>今日の実績（${t.unit}）<input name="actual" type="number" min="0" max="100000" value="${r.entry.actual??""}" ${disabled}></label>
           </div>
           <label class="final-tick"><input name="checked" type="checkbox" ${r.entry.checked?"checked":""} ${disabled}> 今日の確認済み</label>
+          ${t.plan==="finals-nov28"?`<label class="final-tick"><input name="missed" type="checkbox" ${r.entry.missed?"checked":""} ${disabled}> 今日を未実施日にする</label>`:""}
           <button type="submit" ${disabled}>今日の実績・目標を保存</button>
         </form>
         </details>
@@ -1831,11 +1940,13 @@ function renderFinals(){
             <label>教材<input name="material" maxlength="120" value="${material}" ${disabled}></label>
             <label>問題数・ページ数<input name="quantity" type="number" min="1" max="10000" required value="${t.quantity}" ${disabled}></label>
             <label>単位<select name="unit" ${disabled}>${finalSelect(["問","ページ"],t.unit)}</select></label>
-            <label>周回数<input name="rounds" type="number" min="0.5" max="20" step="0.5" required value="${t.rounds}" ${disabled}></label>
+            <label>${t.plan==="finals-nov28"?"中間目標の周回数":"周回数"}<input name="rounds" type="number" min="0.5" max="20" step="0.5" required value="${t.rounds}" ${disabled}></label>
             <label>優先度<select name="priority" ${disabled}>${finalSelect(finalPriorities,t.priority,true)}</select></label>
-            <label>学習期限<input name="deadline" type="date" required value="${t.deadline}" ${disabled}></label>
-            <label>試験日<input name="exam" type="date" value="${t.exam}" ${disabled}></label>
-            <label>予備日数<input name="reserve" type="number" min="0" max="30" required value="${t.reserve}" ${disabled}></label>
+            ${t.plan==="finals-nov28"?`<label>試験前日までの目標（周）<input name="examRounds" type="number" min="1" max="20" step="0.5" required value="${t.examRounds}" ${disabled}></label>`:""}
+            <label>${t.plan==="finals-nov28"?"中間締切":"学習期限"}<input name="deadline" type="date" required value="${t.deadline}" ${disabled}></label>
+            <label>試験日<input name="exam" type="date" ${t.plan==="finals-nov28"?"required":""} value="${t.exam}" ${disabled}></label>
+            <label>${t.plan==="finals-nov28"?"中間締切までの予備日数":"予備日数"}<input name="reserve" type="number" min="0" max="30" required value="${t.reserve}" ${disabled}></label>
+            ${t.plan==="finals-nov28"?`<label>中間締切後の予備日数<input name="examReserve" type="number" min="0" max="30" required value="${t.examReserve}" ${disabled}></label>`:""}
           </div><button type="submit" ${disabled}>教材・目標を保存</button></form>
         </details>
         <details><summary>過去の実績</summary>
@@ -1880,27 +1991,53 @@ document.getElementById("finalPlanner").addEventListener("submit",event=>{
   const form=event.target;
   const id=form.closest("[data-id]").dataset.id;
   const input=Object.fromEntries(new FormData(form));
-  const date=todayStr();
+  const date=finalJstDate.format(new Date());
+  const task=finalTasks.find(item=>item.id===id);
+  if(!task)return;
+  if(task.plan==="finals-nov28"&&form.dataset.action==="task"&&
+    (Number(input.rounds)>Number(input.examRounds)||input.deadline>=input.exam||input.deadline<finalPlanStart)){
+    document.getElementById("finalStatus").textContent="中間締切は計画開始日以降かつ試験日の前に設定し、中間目標は試験前の目標以下にしてください。";
+    return;
+  }
+  if(input.missed==="on"&&Number(input.actual)>0){
+    document.getElementById("finalStatus").textContent="未実施日にする場合は、今日の実績を0問にしてください。";
+    return;
+  }
   updateFinals(tasks=>tasks.map(task=>{
     if(task.id!==id)return task;
     if(form.dataset.action==="daily"){
       const planned=task.plan==="finals-nov28";
       const owners=finalTileOwners(task);
-      const prior=[...owners].filter(([,day])=>day!==date).length;
-      const actual=planned?Math.min(Number(input.actual),Math.max(0,60-prior)):Number(input.actual);
-      const tiles=[...finalTileOwners(task)].filter(([,day])=>day===date).map(([tile])=>tile).slice(0,actual);
+      const prior=new Map([...owners].filter(([,day])=>day!==date));
+      const total=Math.ceil(task.quantity*task.examRounds);
+      const previousEntry=task.entries[date];
+      const requested=Number(input.actual);
+      const capacity=total-finalPlanProgress(task,prior,"9999-12-31").done;
+      const actual=planned&&requested!==(previousEntry?.actual??0)?Math.min(requested,capacity):requested;
+      const tiles=[...owners].filter(([,day])=>day===date).map(([tile])=>tile).slice(0,actual);
       if(planned){
-        for(let tile=0;tiles.length<actual;tile++){
-          if(!owners.has(tile))tiles.push(tile);
+        for(let start=0;start<total&&tiles.length<actual;start+=task.quantity){
+          const limit=Math.min(task.quantity,total-start);
+          const roundTiles=new Set(tiles.filter(tile=>tile>=start&&tile<start+task.quantity));
+          let room=limit-roundTiles.size;
+          for(let tile=start;tile<start+task.quantity;tile++)if(prior.has(tile))room--;
+          for(let tile=start;room>0&&tile<start+task.quantity&&tiles.length<actual;tile++){
+            if(prior.has(tile)||roundTiles.has(tile))continue;
+            tiles.push(tile);
+            room--;
+          }
         }
       }
-      const entry={actual,tiles,checked:input.checked==="on",target:input.target===""?null:Number(input.target)};
+      const entry={...previousEntry,actual,tiles,checked:input.checked==="on",
+        target:input.target===""?null:Number(input.target),missed:input.missed==="on"};
       return {...task,entries:{...task.entries,[date]:entry}};
     }
     const updated={...task,...input,quantity:Number(input.quantity),rounds:Number(input.rounds),
       priority:Number(input.priority),reserve:Number(input.reserve),material:input.material.trim()};
-    if(task.plan==="finals-nov28"&&["subject","quantity","unit","rounds","deadline","exam","reserve"]
-      .some(key=>updated[key]!==task[key]))updated.plan="custom";
+    if(task.plan==="finals-nov28"){
+      updated.examRounds=Number(input.examRounds);
+      updated.examReserve=Number(input.examReserve);
+    }
     return updated;
   }));
 });
