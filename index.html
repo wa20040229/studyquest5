@@ -797,7 +797,7 @@ input[type="file"]{
   <div class="box">
     <h2>期末試験の学習計画</h2>
     <p class="small">科目 → 教材と目標 → 今日の実績 → 毎日チェック</p>
-    <p class="small">初期の学習期限は11月28日、予備日は2日です。科目別の試験日は、分かり次第入力できます。</p>
+    <p class="small">11月28日は中間締切、試験日は12月9日です。予備日と確認・仕上げ日は各科目の「通常日・予備日・確認日・未実施日」で確認できます。</p>
     <p id="finalStatus" role="status" aria-live="polite"></p>
     <div id="finalPlanner"></div>
     <button type="button" class="btn-gray" id="addFinalTask" disabled>教材を追加</button>
@@ -1633,7 +1633,8 @@ function finalPlanStats(task,date){
   const lateDays=finalDates(finalDate(finalDay(deadline)+1),examEnd);
   const earlyReserves=finalReserveDates(earlyDays,finalBufferDays,task.reserve);
   const lateReserves=finalReserveDates(lateDays,finalExamBufferDays,task.examReserve);
-  const early=finalAllocate(earlyDays,earlyReserves,task.entries,Math.min(milestoneRemaining,remaining),date,actual);
+  const finishingDays=new Set(earlyDays.filter(day=>deadline===finalMilestoneDate&&day>="2026-11-27"&&!earlyReserves.has(day)));
+  const early=finalAllocate(earlyDays,new Set([...earlyReserves,...finishingDays]),task.entries,Math.min(milestoneRemaining,remaining),date,actual);
   const earlyWork=[...early.planned.values()].reduce((sum,count)=>sum+count,0);
   const late=finalAllocate(lateDays,lateReserves,task.entries,Math.max(0,remaining-earlyWork),date,actual);
   const plan=new Map([...early.planned,...late.planned]);
@@ -1644,11 +1645,11 @@ function finalPlanStats(task,date){
     if(entry?.missed)return true;
     if(day>=date||entry?.target===0||entry?.actual>0)return false;
     if(entry?.target!=null)return true;
-    if(reserves.has(day))return false;
+    if(reserves.has(day)||finishingDays.has(day))return false;
     const before=finalPlanProgress(task,owners,finalDate(finalDay(day)-1));
     return day<=deadline?before.milestoneDone<milestone:before.done<total;
   });
-  const dayType=day=>missed.includes(day)?"未実施日":reserves.has(day)?"予備日":"通常日";
+  const dayType=day=>missed.includes(day)?"未実施日":reserves.has(day)?"予備日":finishingDays.has(day)?"確認・仕上げ日":"通常日";
   const target=entry.missed?actual:entry.target??(actual+(plan.get(date)??0));
   const todayWork=Math.max(0,target-actual);
   const today=finalDay(date),weekday=(today+3)%7;
@@ -1878,7 +1879,7 @@ function renderFinalPlanDetails(task,stats,date){
 }
 function renderFinalPlanDates(task,stats,date){
   const missed=stats.missed.map(day=>day.slice(5).replace("-","/"));
-  return `<details><summary>通常日・予備日・未実施日</summary>
+  return `<details><summary>通常日・予備日・確認日・未実施日</summary>
     <p>未実施日 ${missed.length}日${missed.length?"（"+missed.join("・")+"）":""}</p>
     ${stats.days.filter(day=>day>=date).map(day=>`<div>${day.slice(5).replace("-","/")}　${stats.dayType(day)}　${stats.plan.get(day)??0}${task.unit}
       ${task.entries[day]?.target!=null?"（手入力）":""}</div>`).join("")}</details>`;
