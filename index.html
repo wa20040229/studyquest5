@@ -1890,80 +1890,45 @@ function renderFinalPlanDates(task,stats,date){
       ${task.entries[day]?.target!=null?"（手入力）":""}</div>`).join("")}</details>`;
 }
 
-function finalPace(rows,date,budget){
-  const tasks=rows.map(row=>{
-    const days=row.days.filter(day=>day>=date&&day<=row.deadline&&row.dayType(day)==="通常日"&&
-      row.task.entries[day]?.target==null);
-    const fixed=[...row.early.planned].filter(([day])=>row.task.entries[day]?.target!=null);
-    return {days,fixed,needed:Math.max(0,row.milestoneRemaining-fixed.reduce((sum,[,count])=>sum+count,0))};
+function finalMilestonePace(rows,date){
+  const subjects=rows.map(row=>{
+    let left=row.milestoneRemaining;
+    let finish=null;
+    for(const [day,count] of [...row.plan].sort(([a],[b])=>a.localeCompare(b))){
+      if(day<date||!left)continue;
+      left=Math.max(0,left-count);
+      if(!left)finish=day;
+    }
+    return {row,finish,left,today:Math.min(row.milestoneRemaining,row.todayWork)};
   });
+  const finishes=subjects.map(subject=>subject.finish).filter(Boolean).sort();
   const normalDays=new Set(rows.flatMap(row=>row.days.filter(day=>day>=date&&day<=row.deadline&&row.dayType(day)==="通常日")));
-  const committed=new Map();
-  const actual=rows.reduce((sum,row)=>sum+row.actual,0);
-  if(normalDays.has(date))committed.set(date,actual);
-  for(const task of tasks){
-    for(const [day,count] of task.fixed)committed.set(day,(committed.get(day)??0)+count);
-  }
-  let shortage=0;
-  let required=0;
-  let unscheduled=false;
-  let fixedOverBudget=false;
-  for(const [day,count] of committed){
-    if(normalDays.has(day)){
-      required=Math.max(required,count);
-      if(count>budget)fixedOverBudget=true;
-    }
-  }
-  // Each subset of subjects must fit into the dates available to that subset.
-  for(let mask=1;mask<2**tasks.length;mask++){
-    const selected=tasks.filter((_,index)=>mask&(1<<index));
-    const need=selected.reduce((sum,task)=>sum+task.needed,0);
-    if(!need)continue;
-    const days=new Set(selected.flatMap(task=>task.days));
-    if(!days.size)unscheduled=true;
-    let capacity=0;
-    let committedOnDays=0;
-    for(const day of days){
-      const count=committed.get(day)??0;
-      capacity+=Math.max(0,budget-count);
-      committedOnDays+=count;
-    }
-    shortage=Math.max(shortage,need-capacity);
-    if(days.size)required=Math.max(required,Math.ceil((need+committedOnDays)/days.size));
-  }
-  return {normalDays:normalDays.size,remaining:rows.reduce((sum,row)=>sum+row.milestoneRemaining,0),
-    actual,today:rows.reduce((sum,row)=>sum+row.todayWork,0),shortage,required,unscheduled,fixedOverBudget};
+  return {subjects,finish:subjects.some(subject=>subject.left>0)?null:finishes.at(-1),
+    remaining:rows.reduce((sum,row)=>sum+row.milestoneRemaining,0),normalDays:normalDays.size,
+    today:subjects.reduce((sum,subject)=>sum+subject.today,0)};
 }
 
 function renderFinalPace(rows,date){
-  const budget=20;
-  const targets=finalSubjects.map(subject=>rows.find(row=>row.task.plan==="finals-nov28"&&
+  const planned=finalSubjects.map(subject=>rows.find(row=>row.task.plan==="finals-nov28"&&
     row.task.subject===subject&&row.task.unit==="問"));
-  const planned=targets.filter(Boolean);
-  if(planned.length!==4)return "";
-  const deadline=planned[0].deadline;
-  if(planned.some(row=>row.deadline!==deadline))return "";
-  if(!finalReady)return '<p class="small">実績を同期すると、4科目の必要ペースが表示されます。</p>';
-  const pace=finalPace(planned,date,budget);
-  const passed=date>deadline;
-  const timelyMissed=planned.reduce((sum,row)=>sum+(row.milestoneShortfall??0),0);
-  let status;
-  if(passed)status=timelyMissed?`締切時点であと ${timelyMissed}問`:"中間目標を達成しました";
-  else if(!pace.remaining)status="中間目標を達成しました";
-  else if(pace.unscheduled)status="通常日に割り当てられない問題があります";
-  else if(pace.shortage)status=`1日20問では ${pace.shortage}問足りません`;
-  else if(pace.fixedOverBudget)status="1日20問を超える手入力・実績があります";
-  else status="通常日1日20問で間に合います";
-  const detail=passed?"":pace.unscheduled?"未配分の科目と残り問題数を下で確認できます。":
-    pace.remaining?`必要なペースは、通常日1日あたり4科目合計で最大 ${pace.required}問です。`:"";
-  return `<section class="final-task final-pace" aria-label="4科目の学習ペース">
-    <h3>${deadline.slice(5).replace("-","/")}までのペース</h3>
+  if(planned.some(row=>!row))return "";
+  if(!finalReady)return '<p class="small">実績を同期すると、今日の問題数と到達予定日が表示されます。</p>';
+  const pace=finalMilestonePace(planned,date);
+  const roundTargets=new Set(planned.map(row=>row.task.rounds));
+  const goal=roundTargets.size===1?`4科目を各${planned[0].task.rounds}周`:"4科目の中間目標";
+  const deadline=planned.map(row=>row.deadline).sort().at(-1);
+  const format=day=>Number(day.slice(5,7))+"月"+Number(day.slice(8))+"日";
+  const status=!pace.remaining?`${goal}達成`:
+    pace.finish?`今日あと${pace.today}問 → ${format(pace.finish)}までに${goal}`:
+    `今日あと${pace.today}問 → ${goal}の到達日は未定`;
+  const timing=pace.finish&&pace.finish>deadline?`中間締切の${format(deadline)}を過ぎる見込みです。`:
+    pace.remaining&&!pace.finish?"現在の計画では試験前日までに配分できない問題があります。":"";
+  return `<section class="final-task final-pace" aria-label="4科目の到達予定">
     <p class="final-pace-status"><strong>${status}</strong></p>
-    <p>4科目で残り <strong>${pace.remaining}問</strong> ・ 残りの通常日 <strong>${pace.normalDays}日</strong></p>
-    ${detail?`<p>${detail}</p>`:""}
-    <p>今日の実績 ${pace.actual}問 ・ 今日あと <strong>${pace.today}問</strong></p>
-    <div class="final-pace-subjects">${planned.map(row=>`<div><strong>${row.task.subject}</strong><span>残り ${row.milestoneRemaining}問</span><span>今日あと ${row.todayWork}問</span></div>`).join("")}</div>
-    <p class="small">予備日・確認日は自動配分から外し、手入力の目標を優先します。「今日あと」は現在の日別計画です。</p>
+    <p>中間締切 ${format(deadline)} ・ 4科目で残り ${pace.remaining}問 ・ 締切までの通常日 ${pace.normalDays}日</p>
+    ${timing?`<p>${timing}</p>`:""}
+    <div class="final-pace-subjects">${pace.subjects.map(({row,today})=>`<div><strong>${row.task.subject}</strong><span>残り ${row.milestoneRemaining}問</span><span>今日あと ${today}問</span></div>`).join("")}</div>
+    <p class="small">到達予定日は、今日と今後の予定どおりに進めた場合です。実績や手入力の目標に合わせて再計算します。</p>
   </section>`;
 }
 
@@ -1971,6 +1936,7 @@ function renderFinals(){
   const planner=document.getElementById("finalPlanner");
   if(!planner || (planner.contains(document.activeElement)&&!finalBusy))return;
   const date=finalJstDate.format(new Date());
+  planner.dataset.planDate=date;
   const rows=finalTasks.map(task=>({task,...finalStats(task,date)}))
     .sort((a,b)=>a.task.priority-b.task.priority);
   const total=rows.reduce((sum,r)=>sum+r.total,0);
@@ -2039,6 +2005,15 @@ function renderFinals(){
       </article>`;
     }).join("")}`;
 }
+function refreshFinalPlanDate(){
+  if(document.visibilityState!=="visible")return;
+  const planner=document.getElementById("finalPlanner");
+  if(planner?.dataset.planDate!==finalJstDate.format(new Date()))renderFinals();
+}
+document.addEventListener("visibilitychange",refreshFinalPlanDate);
+window.addEventListener("pageshow",refreshFinalPlanDate);
+window.setInterval(refreshFinalPlanDate,60000);
+
 async function updateFinals(apply){
   if(!currentUser||!finalReady||finalBusy)return false;
   const status=document.getElementById("finalStatus");
