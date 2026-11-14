@@ -1851,36 +1851,14 @@ document.getElementById("finalPlanner").addEventListener("click",event=>{
   });
 });
 
-function finalQuestionList(task,stats){
-  const numbers=[];
-  for(let start=0;start<stats.total;start+=task.quantity){
-    const round=start/task.quantity+1;
-    const max=Math.min(task.quantity,stats.total-start);
-    let unassigned=max;
-    const next=[];
-    for(let index=0;index<task.quantity;index++){
-      const owner=stats.owners.get(start+index);
-      if(owner&&owner<=stats.date)unassigned--;
-      else next.push(`${round}周目の${index+1}番`);
-    }
-    numbers.push(...next.slice(0,Math.max(0,unassigned)));
-  }
-  return numbers;
-}
-function renderFinalPlanDetails(task,stats,date){
-  const questions=finalQuestionList(task,stats);
-  const planned=Math.min(stats.todayWork,questions.length);
-  const extra=questions[planned];
+function renderFinalPlanDetails(task,stats){
   const rounds=new Intl.NumberFormat("ja-JP",{maximumFractionDigits:3}).format(stats.done/task.quantity);
   const milestoneMessage=stats.milestoneShortfall!==null?
     `締切時点の未達 ${stats.milestoneShortfall}${task.unit}`:`残り ${stats.milestoneRemaining}${task.unit}`;
   return `<p>現在 <strong>${rounds}周</strong>（${stats.done}/${stats.total}${task.unit}） ・ 試験まで残り <strong>${stats.remaining}${task.unit}</strong></p>
     <p>${stats.deadline}の目標 ${task.rounds}周（${stats.milestone}${task.unit}） ・ ${milestoneMessage}</p>
     <p>提出用1周　残り <strong>${task.quantity-stats.submission}${task.unit}</strong><br>
-      追加0.5周　残り <strong>${stats.additional-stats.review}${task.unit}</strong></p>
-    <p>最初に着手する1問　${planned?questions[0]:"今日の必須分なし"}<br>
-      続けて解く問題　${planned>1?questions.slice(1,Math.min(planned,7)).join("、")+(planned>7?" ほか"+(planned-7)+"問":""):"—"}<br>
-      余力があれば　${extra&&date<task.exam&&!stats.entry.missed?extra:"—"}</p>`;
+      追加0.5周　残り <strong>${stats.additional-stats.review}${task.unit}</strong></p>`;
 }
 function renderFinalPlanDates(task,stats,date){
   const missed=stats.missed.map(day=>day.slice(5).replace("-","/"));
@@ -1919,14 +1897,15 @@ function renderFinalPace(rows,date){
   const deadline=planned.map(row=>row.deadline).sort().at(-1);
   const format=day=>Number(day.slice(5,7))+"月"+Number(day.slice(8))+"日";
   const status=!pace.remaining?`${goal}達成`:
-    pace.finish?`今日あと${pace.today}問 → ${format(pace.finish)}までに${goal}`:
-    `今日あと${pace.today}問 → ${goal}の到達日は未定`;
-  const timing=pace.finish&&pace.finish>deadline?`中間締切の${format(deadline)}を過ぎる見込みです。`:
-    pace.remaining&&!pace.finish?"現在の計画では試験前日までに配分できない問題があります。":"";
+    pace.today?`今日のペースまであと${pace.today}問`:
+    pace.subjects.some(({row})=>row.actual>0)?"今日のペース分は完了":"今日の予定は0問";
+  const timing=pace.finish?`このペースで${format(pace.finish)}までに${goal}`:
+    pace.remaining?"現在の計画では試験前日までに配分できない問題があります。":"";
+  const delayed=pace.finish&&pace.finish>deadline;
   return `<section class="final-task final-pace" aria-label="4科目の到達予定">
     <p class="final-pace-status"><strong>${status}</strong></p>
+    ${timing?`<p>${timing}${delayed?"（中間締切後）":""}</p>`:""}
     <p>中間締切 ${format(deadline)} ・ 4科目で残り ${pace.remaining}問 ・ 締切までの通常日 ${pace.normalDays}日</p>
-    ${timing?`<p>${timing}</p>`:""}
     <div class="final-pace-subjects">${pace.subjects.map(({row,today})=>`<div><strong>${row.task.subject}</strong><span>残り ${row.milestoneRemaining}問</span><span>今日あと ${today}問</span></div>`).join("")}</div>
     <p class="small">到達予定日は、今日と今後の予定どおりに進めた場合です。実績や手入力の目標に合わせて再計算します。</p>
   </section>`;
@@ -1969,7 +1948,7 @@ function renderFinals(){
         <p>${t.exam?"試験日 "+t.exam:"学習期限 "+t.deadline}（${timing}）</p>
         <div class="final-check"><strong>今日の目標 ${r.target}${t.unit}</strong>
         <span>実績 ${r.actual}${t.unit} ／ 今日あと ${r.todayWork??Math.max(0,r.target-r.actual)}${t.unit}</span></div>
-        ${t.plan==="finals-nov28"?renderFinalPlanDetails(t,r,date):`<p>${t.rounds}周目標 ・ 残り ${r.remaining}${t.unit}</p>`}
+        ${t.plan==="finals-nov28"?renderFinalPlanDetails(t,r):`<p>${t.rounds}周目標 ・ 残り ${r.remaining}${t.unit}</p>`}
         <p class="small">${finalGoalDetails(t,r,date)}</p>
         ${t.plan==="finals-nov28"?renderFinalPlanDates(t,r,date):""}
         ${renderFinalTiles(t,r.total,date,disabled)}
