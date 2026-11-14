@@ -1896,18 +1896,20 @@ function renderFinalPace(rows,date){
   const goal=roundTargets.size===1?`4科目を各${planned[0].task.rounds}周`:"4科目の中間目標";
   const deadline=planned.map(row=>row.deadline).sort().at(-1);
   const format=day=>Number(day.slice(5,7))+"月"+Number(day.slice(8))+"日";
-  const status=!pace.remaining?`${goal}達成`:
-    pace.today?`今日のペースまであと${pace.today}問`:
-    pace.subjects.some(({row})=>row.actual>0)?"今日のペース分は完了":"今日の予定は0問";
-  const timing=pace.finish?`このペースで${format(pace.finish)}までに${goal}`:
-    pace.remaining?"現在の計画では試験前日までに配分できない問題があります。":"";
   const delayed=pace.finish&&pace.finish>deadline;
+  const targetDate=delayed?pace.finish:deadline;
+  const status=!pace.remaining?`${goal}達成`:
+    !pace.finish?`今日あと${pace.today}問・到達予定日は未定`:
+    pace.today?`今日${pace.today}問やれば${format(targetDate)}までに${goal}`:
+    `${pace.subjects.some(({row})=>row.actual>0)?"今日のペース分は完了":"今日の予定は0問"}・${format(targetDate)}までに${goal}`;
+  const timing=delayed?`中間締切（${format(deadline)}）を過ぎる見込みです。`:
+    pace.remaining&&!pace.finish?"現在の計画では試験前日までに配分できない問題があります。":"";
   return `<section class="final-task final-pace" aria-label="4科目の到達予定">
     <p class="final-pace-status"><strong>${status}</strong></p>
-    ${timing?`<p>${timing}${delayed?"（中間締切後）":""}</p>`:""}
+    ${timing?`<p>${timing}</p>`:""}
     <p>中間締切 ${format(deadline)} ・ 4科目で残り ${pace.remaining}問 ・ 締切までの通常日 ${pace.normalDays}日</p>
     <div class="final-pace-subjects">${pace.subjects.map(({row,today})=>`<div><strong>${row.task.subject}</strong><span>残り ${row.milestoneRemaining}問</span><span>今日あと ${today}問</span></div>`).join("")}</div>
-    <p class="small">到達予定日は、今日と今後の予定どおりに進めた場合です。実績や手入力の目標に合わせて再計算します。</p>
+    <p class="small">今日と今後の予定どおりに進めた場合です。実績や手入力の目標に合わせて再計算します。</p>
   </section>`;
 }
 
